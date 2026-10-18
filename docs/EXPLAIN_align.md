@@ -6,7 +6,8 @@ master and the suspect are then reduced to one skeleton:
 - drop invisible format characters (Unicode category Cf, e.g. U+200B);
 - map NBSP / narrow NBSP to space, curly quotes and dashes to ASCII;
 - fold Cyrillic/Greek look-alikes to Latin, lower-case everything;
-- rewrite every authored word variant (lex, spl, dat, num) to its bit-0 form.
+- rewrite every authored word variant (lex, spl, dat, num) to its group label;
+  pairs sharing a word (take/need, need/require) form one group via union-find.
 
 Every skeleton character keeps the original span it came from. `difflib.SequenceMatcher`
 finds exact blocks between the two skeletons; a slot's skeleton bounds go through

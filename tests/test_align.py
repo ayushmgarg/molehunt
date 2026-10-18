@@ -55,3 +55,17 @@ def test_stripped_repetitive_copy_does_not_read_a_neighbouring_paragraph() -> No
     stripped = render_text(template, slots, bits).replace("\u200b", "")
     observed = extract_variants(stripped, align_to_master(template, slots, stripped))
     assert {item.slot_index: item.bit for item in observed} == dict(enumerate(bits))
+
+
+def test_word_in_two_variant_pairs_still_aligns() -> None:
+    template = parse_template(
+        "We {{lex:take|need}} time. Accounts {{lex:need|require}} calls today."
+    )
+    slots = allocate_slots(template, b"k" * 32)
+    from molehunt.detect.extract import extract_variants
+
+    for bits in ([0, 0], [0, 1], [1, 0], [1, 1]):
+        observed = template.render(bits)
+        found = extract_variants(observed, align_to_master(template, slots, observed))
+        by_source = {item.source_index: item.bit for item in found}
+        assert [by_source[0], by_source[1]] == bits

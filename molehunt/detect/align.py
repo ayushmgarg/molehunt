@@ -4,8 +4,9 @@ Algorithm (SPEC 5.5). Both the canonical master (every slot at its bit-0 variant
 and the suspect are reduced to the same skeleton: invisible format characters are
 dropped, no-break spaces become spaces, look-alike letters map to Latin, curly
 quotes and dashes become ASCII, text is lower-cased, and every authored word
-variant is rewritten to its bit-0 form. Each skeleton character remembers the
-span of original characters it came from. ``difflib.SequenceMatcher`` blocks on the
+variant is rewritten to one label per variant group (union-find over pairs, so a
+word used in two pairs, e.g. take/need and need/require, still has one label).
+Each skeleton character remembers the span of original characters it came from. ``difflib.SequenceMatcher`` blocks on the
 two skeletons act as anchors; a slot's skeleton bounds are carried through the
 nearest anchor and then mapped back to an original-text window in the suspect.
 """
@@ -64,16 +65,28 @@ def _char_skeleton(text: str) -> tuple[list[str], list[int], list[int]]:
     return chars, starts, ends
 
 
+def _variant_groups(variants: Sequence[tuple[str, str]]) -> dict[str, str]:
+    """Union-find over variant pairs: every word maps to its group's smallest member."""
+    parent: dict[str, str] = {}
+
+    def find(word: str) -> str:
+        while parent.setdefault(word, word) != word:
+            word = parent[word]
+        return word
+
+    for zero, one in variants:
+        left, right = "".join(_char_skeleton(zero)[0]), "".join(_char_skeleton(one)[0])
+        if left and right:
+            first, second = sorted((find(left), find(right)))
+            parent[second] = first
+    return {word: find(word) for word in parent if find(word) != word}
+
+
 def build_skeleton(text: str, variants: Sequence[tuple[str, str]] = ()) -> Skeleton:
-    """Normalise characters, then rewrite each bit-1 word variant to its bit-0 form."""
+    """Normalise characters, then rewrite every word variant to its group label."""
     chars, starts, ends = _char_skeleton(text)
     flat = "".join(chars)
-    mapping = {
-        "".join(_char_skeleton(one)[0]): "".join(_char_skeleton(zero)[0])
-        for zero, one in variants
-        if zero and one
-    }
-    mapping = {one: zero for one, zero in mapping.items() if one and one != zero}
+    mapping = _variant_groups(variants)
     if not mapping:
         return Skeleton(flat, tuple(starts), tuple(ends), len(text))
     pattern = re.compile(

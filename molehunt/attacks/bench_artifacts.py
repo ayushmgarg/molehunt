@@ -1,8 +1,11 @@
 """Write benchmark CSVs, plots, and the SPEC Section 6 target check.
 
-Artifacts under ``<out>/results``: runs.csv, survival.csv, runtime.csv, roc.csv,
+Artifacts under ``<out>/results``: runs.csv, attacks.csv (per attack/strength:
+top-1, attributed, false accusations, mean n, mean observed error), survival.csv,
+runtime.csv, roc.csv,
 targets.csv, summary.json (+ collusion.csv); under ``<out>/plots``: accuracy.png,
-survival.png (attack x channel heatmap), roc.png, collusion.png.
+survival.png (attack x channel heatmap of the share read *correctly*), roc.png,
+collusion.png. ``observed_error`` per run = (n - m) / n, the measured flip rate e.
 
 ROC: for a threshold t on log10 LR, true-accusation rate = share of runs whose
 leaker scores above t; false-accusation rate = share of runs where the best
@@ -91,7 +94,7 @@ def _plots(rows: Sequence[BenchmarkRow], survival: dict, roc: list, collusion: S
     channels = sorted({key[2] for key in survival})
     labels = sorted({(key[0], key[1]) for key in survival})
     matrix = [
-        [survival[(a, s, c)][0] / survival[(a, s, c)][1] if (a, s, c) in survival else 0.0
+        [survival[(a, s, c)][2] / survival[(a, s, c)][1] if (a, s, c) in survival else 0.0
          for c in channels]
         for a, s in labels
     ]
@@ -99,7 +102,7 @@ def _plots(rows: Sequence[BenchmarkRow], survival: dict, roc: list, collusion: S
     image = axis.imshow(matrix, vmin=0, vmax=1, cmap="cividis", aspect="auto")
     axis.set_xticks(range(len(channels)), channels, rotation=30, ha="right")
     axis.set_yticks(range(len(labels)), [f"{a} / {s:g}" for a, s in labels], fontsize=7)
-    figure.colorbar(image, ax=axis, label="Fraction of slots observed")
+    figure.colorbar(image, ax=axis, label="Fraction of slots read correctly")
     figure.tight_layout()
     paths["survival_plot"] = plots / "survival.png"
     figure.savefig(paths["survival_plot"], dpi=140)
@@ -142,18 +145,39 @@ def write_artifacts(rows: Sequence[BenchmarkRow], output: Path, collusion: Seque
     paths = {"runs": _write_csv(results / "runs.csv", (
         "master", "attack_id", "strength", "seed", "leaker_id", "observed_slots", "matches",
         "top1_correct", "log10_lr", "outcome", "false_accusation", "best_innocent_log10_lr",
-        "runtime_seconds"), [
+        "observed_error", "runtime_seconds"), [
         (r.master, r.attack_id, r.strength, r.seed, r.leaker_id, r.observed_slots, r.matches,
          int(r.top1_correct), f"{r.log10_lr:.4f}", r.outcome, int(r.false_accusation),
-         f"{r.best_innocent_log10_lr:.4f}", f"{r.runtime_seconds:.5f}") for r in rows])}
-    survival: dict[tuple[str, float, str], list[int]] = defaultdict(lambda: [0, 0])
+         f"{r.best_innocent_log10_lr:.4f}",
+         f"{(r.observed_slots - r.matches) / r.observed_slots:.4f}" if r.observed_slots else "",
+         f"{r.runtime_seconds:.5f}") for r in rows])}
+    survival: dict[tuple[str, float, str], list[int]] = defaultdict(lambda: [0, 0, 0])
     for row in rows:
+        right = dict(row.channel_correct)
         for channel, present, total in row.channel_survival:
-            survival[(row.attack_id, row.strength, channel)][0] += present
-            survival[(row.attack_id, row.strength, channel)][1] += total
+            bucket = survival[(row.attack_id, row.strength, channel)]
+            bucket[0] += present
+            bucket[1] += total
+            bucket[2] += right.get(channel, present)
     paths["survival"] = _write_csv(
-        results / "survival.csv", ("attack_id", "strength", "channel", "survived", "total", "fraction"),
-        [(a, s, c, p, t, f"{p / t:.4f}") for (a, s, c), (p, t) in sorted(survival.items())])
+        results / "survival.csv",
+        ("attack_id", "strength", "channel", "survived", "total", "fraction", "correct",
+         "correct_fraction"),
+        [(a, s, c, p, t, f"{p / t:.4f}", k, f"{k / t:.4f}")
+         for (a, s, c), (p, t, k) in sorted(survival.items())])
+    by_attack: dict[tuple[str, float], list[BenchmarkRow]] = defaultdict(list)
+    for row in rows:
+        by_attack[(row.attack_id, row.strength)].append(row)
+    paths["attacks"] = _write_csv(results / "attacks.csv", (
+        "attack_id", "strength", "runs", "top1", "attributed", "false_accusations",
+        "mean_observed_slots", "min_observed_slots", "mean_observed_error"), [
+        (a, s, len(v), f"{_rate([r.top1_correct for r in v]):.4f}",
+         f"{_rate([r.outcome == 'attribute' for r in v]):.4f}",
+         sum(r.false_accusation for r in v),
+         f"{statistics.mean(r.observed_slots for r in v):.1f}",
+         min(r.observed_slots for r in v),
+         f"{statistics.mean((r.observed_slots - r.matches) / r.observed_slots for r in v if r.observed_slots) if any(r.observed_slots for r in v) else 0:.4f}")
+        for (a, s), v in sorted(by_attack.items())])
     timing: dict[str, list[float]] = defaultdict(list)
     for row in rows:
         timing[row.attack_id].append(row.runtime_seconds)

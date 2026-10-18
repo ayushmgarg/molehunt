@@ -4,7 +4,8 @@ One run = render the leaker's copy, apply an attack or chain, analyse it against
 all N candidates, apply the decision rule. Recorded per run: observed slots n,
 leaker matches m, leaker log10 LR, top-1 correct, decision outcome, false
 accusation (an innocent attributed), best innocent log10 LR (for the ROC curve),
-per-channel survival, runtime.
+per-channel survival (observed, and observed with the leaker's true bit, since
+A4/A6-style normalisation can forge a bit 0 instead of erasing), runtime.
 
 Protocol (`run_protocol`): for each master and seed, a key derived from the seed,
 L = keyed slots, 20 leakers drawn from 50 synthetic employees, every single attack
@@ -62,6 +63,7 @@ class BenchmarkRow:
     outcome: str = ""
     false_accusation: bool = False
     best_innocent_log10_lr: float = 0.0
+    channel_correct: tuple[tuple[str, int], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -113,6 +115,12 @@ def run_case(
     result = analyze_prepared(prepared, text, codewords, flip_rate=flip_rate)
     decision = result.decision(alpha=alpha)
     actual = next(score for score in result.scores if score.candidate_id == leaker)
+    correct: dict[str, int] = {}
+    for slot in prepared.slots:
+        bit = result.observations[slot.index]
+        correct[slot.channel] = correct.get(slot.channel, 0) + int(
+            bit is not None and bit == codewords[leaker][slot.index]
+        )
     innocent = max(
         (score.log10_lr for score in result.scores if score.candidate_id != leaker),
         default=0.0,
@@ -128,6 +136,7 @@ def run_case(
         master=master, outcome=decision.outcome,
         false_accusation=decision.outcome == "attribute" and decision.candidate_id != leaker,
         best_innocent_log10_lr=innocent,
+        channel_correct=tuple(sorted(correct.items())),
     )
 
 

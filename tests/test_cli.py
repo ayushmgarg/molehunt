@@ -163,3 +163,20 @@ def test_bench_writes_measurements_for_requested_attacks(tmp_path: Path) -> None
     assert (result_dir / "results" / "survival.csv").is_file()
     assert (result_dir / "plots" / "accuracy.png").is_file()
     assert (result_dir / "plots" / "survival.png").is_file()
+
+
+def test_custody_cli_records_and_verifies_evidence(tmp_path: Path) -> None:
+    evidence = tmp_path / "leak.txt"
+    evidence.write_text("synthetic evidence", encoding="utf-8")
+    ledger = tmp_path / "custody.log"
+    added = runner.invoke(
+        app,
+        [
+            "custody", "add", str(evidence), "--actor", "examiner-01", "--action", "intake",
+            "--ledger", str(ledger),
+        ],
+    )
+    assert added.exit_code == 0, added.stdout
+    verified = runner.invoke(app, ["custody", "verify", "--ledger", str(ledger)])
+    assert verified.exit_code == 0
+    assert "VERIFIED: 1 entries" in verified.stdout

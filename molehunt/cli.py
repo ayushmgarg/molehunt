@@ -13,6 +13,7 @@ from molehunt.core.keys import KEY_BYTES, load_or_create_key
 from molehunt.core.render import render_docx, render_text
 from molehunt.core.slots import allocate_slots
 from molehunt.core.template import parse_template
+from molehunt.custody import append_custody_entry, sha256_file, verify_custody
 from molehunt.detect.align import align_to_master
 from molehunt.detect.extract import extract_variants
 from molehunt.detect.ingest import ingest
@@ -23,6 +24,8 @@ app = typer.Typer(
     help="Synthetic document forensics and casebook.",
     no_args_is_help=True,
 )
+custody_app = typer.Typer(help="Append and verify evidence custody entries.")
+app.add_typer(custody_app, name="custody")
 
 
 @app.command()
@@ -189,6 +192,45 @@ def bench(
     for label, path in artifacts.items():
         typer.echo(f"{label}: {path}")
     typer.echo("Results apply only to these synthetic inputs and configured runs.")
+
+
+@custody_app.command("add")
+def custody_add(
+    evidence: Annotated[Path, typer.Argument(help="Evidence file to record")],
+    actor: Annotated[str, typer.Option("--actor", help="Synthetic examiner ID")],
+    action: Annotated[str, typer.Option("--action", help="Custody event action")],
+    details: Annotated[str, typer.Option("--details", help="Event details")]
+    = "",
+    ledger: Annotated[Path, typer.Option("--ledger", help="JSONL custody log")]
+    = Path("custody.log"),
+) -> None:
+    """Append an evidence hash event to the selected custody log."""
+    try:
+        digest = sha256_file(evidence)
+        entry = append_custody_entry(
+            ledger, digest, actor=actor, action=action, details=details
+        )
+    except (OSError, ValueError) as error:
+        typer.echo(f"Error: {error}", err=True)
+        raise typer.Exit(code=2) from error
+    typer.echo(f"Recorded seq {entry['seq']} for SHA-256 {digest}")
+
+
+@custody_app.command("verify")
+def custody_verify(
+    ledger: Annotated[Path, typer.Option("--ledger", help="JSONL custody log")]
+    = Path("custody.log"),
+) -> None:
+    """Verify every entry and link in the custody log."""
+    try:
+        result = verify_custody(ledger)
+    except OSError as error:
+        typer.echo(f"Error: {error}", err=True)
+        raise typer.Exit(code=2) from error
+    if not result.valid:
+        typer.echo(f"BROKEN at seq {result.broken_seq}", err=True)
+        raise typer.Exit(code=1)
+    typer.echo(f"VERIFIED: {result.entries} entries")
 
 
 if __name__ == "__main__":

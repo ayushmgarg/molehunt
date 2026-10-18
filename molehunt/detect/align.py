@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import re
 import unicodedata
-from bisect import bisect_left
+from bisect import bisect_left, bisect_right
 from collections.abc import Sequence
 from dataclasses import dataclass
 from difflib import SequenceMatcher
@@ -43,6 +43,7 @@ class SlotWindow:
     slot: Slot
     start: int | None
     end: int | None
+    anchored: bool = True
 
 
 @dataclass(frozen=True, slots=True)
@@ -231,6 +232,52 @@ def _map_char(
     return suspect.starts[mapped - 1] + len(suspect.words[mapped - 1]) if mapped > 0 else 0
 
 
+def _volatile_tokens(template: Template, slots: Sequence[Slot], master: Skeleton,
+                     tokens: _Tokens) -> set[int]:
+    """Master tokens inside slots whose two variants differ after skeletonising
+    (e.g. an Oxford comma vs nothing); they may be absent, so never anchor on them."""
+    volatile: set[int] = set()
+    for slot in slots:
+        if slot.channel in WORD_CHANNELS:
+            continue
+        if "".join(_char_skeleton(slot.zero)[0]) == "".join(_char_skeleton(slot.one)[0]):
+            continue
+        start = _skeleton_index(master, slot.source_offset)
+        end = _skeleton_index(master, slot.source_offset + len(slot.zero))
+        first = bisect_right(tokens.starts, start, 0, len(tokens.words)) - 1
+        for index in range(max(first, 0), len(tokens.words)):
+            if tokens.starts[index] >= end:
+                break
+            if tokens.starts[index] + len(tokens.words[index]) > start:
+                volatile.add(index)
+    return volatile
+
+
+def _anchored(start: int, end: int, master: _Tokens, paired: list[int],
+              volatile: set[int]) -> bool:
+    """Anchor check (SPEC 5.5): the two nearest stable master tokens on each side
+    of the slot must be aligned, contiguous, and in order in the suspect;
+    otherwise the context is missing and the slot is an erasure."""
+    ends = [first + len(word) for first, word in zip(master.starts, master.words, strict=False)]
+    left_last = bisect_right(ends, start) - 1
+    right_first = bisect_left(master.starts, end, 0, len(master.words))
+    left = [i for i in range(left_last, -1, -1) if i not in volatile][:2][::-1]
+    right = [i for i in range(right_first, len(master.words)) if i not in volatile][:2]
+    if not left and not right:
+        return False
+    if any(paired[i] < 0 for i in left + right):
+        return False
+    for side in (left, right):
+        if len(side) == 2 and paired[side[1]] - paired[side[0]] > side[1] - side[0]:
+            return False
+        if len(side) == 2 and paired[side[1]] <= paired[side[0]]:
+            return False
+    if left and right:
+        gap = paired[right[0]] - paired[left[-1]]
+        return 0 < gap <= right[0] - left[-1] + 2
+    return True
+
+
 def align_to_master(
     template: Template,
     slots: Sequence[Slot],
@@ -243,10 +290,16 @@ def align_to_master(
     blocks = SequenceMatcher(
         None, master_tokens.words, suspect_tokens.words, autojunk=False
     ).get_matching_blocks()
+    volatile = _volatile_tokens(template, slots, master, master_tokens)
+    paired = [-1] * len(master_tokens.words)
+    for a, b, size in blocks:
+        for step in range(size):
+            paired[a + step] = b + step
     result = []
     for slot in slots:
         source_start = _skeleton_index(master, slot.source_offset)
         source_end = _skeleton_index(master, slot.source_offset + len(slot.zero))
+        anchored = _anchored(source_start, source_end, master_tokens, paired, volatile)
         start = _map_char(source_start, False, master_tokens, suspect_tokens, blocks)
         end = _map_char(source_end, True, master_tokens, suspect_tokens, blocks)
         start = 0 if start is None else start
@@ -256,5 +309,7 @@ def align_to_master(
             continue
         original_start = _original_start(suspect, start)
         original_end = max(_original_end(suspect, end), original_start)
-        result.append(SlotWindow(slot, original_start, original_end))
+        if not anchored:
+            original_end = original_start
+        result.append(SlotWindow(slot, original_start, original_end, anchored))
     return tuple(result)

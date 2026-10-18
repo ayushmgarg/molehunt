@@ -73,7 +73,7 @@ def extract_variants(
     observations = []
     for window in windows:
         slot = window.slot
-        if window.start is None or window.end is None:
+        if window.start is None or window.end is None or not window.anchored:
             observations.append(SlotObservation(slot.index, slot.source_index, None, None))
             continue
         start = min(window.start, len(suspect_text))

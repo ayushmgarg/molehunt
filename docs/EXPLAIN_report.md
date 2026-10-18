@@ -7,4 +7,4 @@
 - Example: 3 matches in 3 slots with `e=0.15` gives `LR = 0.85^3 / 0.5^3`.
 - The report labels the ranking as copy attribution and explains that it does not identify the person who disclosed the file.
 - Decision thresholds remain unset until an independent benchmark estimates their error rate.
-- Reports are generated in DOCX format; PDF export and casebook findings are future work.
+- Reports can be generated in DOCX or PDF; casebook-linked findings are future work.

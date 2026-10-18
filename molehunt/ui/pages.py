@@ -69,7 +69,7 @@ def build_pages(owner) -> QTabWidget:
     for key, label, default in (
         ("evidence", "Evidence", ""), ("master", "Master template", ""),
         ("employees", "Synthetic roster", ""), ("key", "Secret key", ".molehunt/master.key"),
-        ("report", "Optional DOCX report", ""),
+        ("report", "Optional DOCX or PDF report", ""),
     ):
         _add_field(form, fields, key, label, default)
     run = QPushButton("Run analysis")

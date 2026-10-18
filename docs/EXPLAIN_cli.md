@@ -9,7 +9,7 @@ parse, slot, align, extract, and score functions used by the library.
 per-channel survival, and elapsed time as CSV and plots.
 `custody add` records a file's SHA-256; `custody verify` checks the JSONL event chain.
 `intake` creates case-scoped original and working copies and starts the custody log.
-`analyze --report output.docx` adds a DOCX ranking report with the evidence hash and stated limits.
+`analyze --report output.docx` or `output.pdf` writes a ranking report with the evidence hash and stated limits.
 `serve` opens the PySide6 interface for the same issue, analysis, intake, and benchmark flows.
 
 For each attack/strength/seed/employee combination, top-1 accuracy is

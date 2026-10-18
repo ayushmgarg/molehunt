@@ -25,3 +25,18 @@ def test_analysis_report_records_hash_rankings_and_limitations(tmp_path) -> None
     assert "a" * 64 in text
     assert "threshold has not been calibrated" in text.lower()
     assert any(cell.text == "E001" for row in document.tables[0].rows for cell in row.cells)
+
+
+def test_analysis_report_can_be_written_as_pdf(tmp_path) -> None:
+    output = tmp_path / "analysis.pdf"
+    scores = score_candidates([1, 0], {"E001": [1, 0]})
+    write_analysis_report(
+        output,
+        evidence_name="leak.txt",
+        evidence_sha256="b" * 64,
+        observed_slots=2,
+        total_slots=2,
+        scores=scores,
+        flip_rate=0.15,
+    )
+    assert output.read_bytes().startswith(b"%PDF-")

@@ -3,7 +3,7 @@ title: The Copier Trail
 brief: The document was printed and photographed. A small machine mark and event times may help.
 objective: Decode the print mark and connect it to the relevant synthetic timeline events.
 generator: print_timeline
-master: data/demo/master.md
+master: data/masters/cases/m4_board_memo.md
 seed_offset: 303
 tools: [image_dots, timeline]
 hints:

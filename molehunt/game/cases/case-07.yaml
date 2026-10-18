@@ -3,7 +3,7 @@ title: The Borrowed Account
 brief: A matching copy points to one account, while badge and authentication records suggest another explanation.
 objective: Separate copy-level attribution from person-level hypotheses and report the alternatives.
 generator: account_sharing
-master: data/masters/m1_roadmap.md
+master: data/masters/cases/m7_access_policy.md
 seed_offset: 707
 tools: [timeline, auto_detector, notes, report]
 hints:

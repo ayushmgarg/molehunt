@@ -3,7 +3,7 @@ title: The Late Download
 brief: Several copies remain plausible. Access and print records may change the fingerprint ranking.
 objective: Fuse copy evidence with explicit synthetic log factors and state what moved the posterior.
 generator: log_fusion
-master: data/demo/master.md
+master: data/masters/cases/m6_offer_points.md
 seed_offset: 505
 tools: [auto_detector, timeline]
 hints:

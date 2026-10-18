@@ -3,7 +3,7 @@ title: The Repacked File
 brief: The visible wording is clean, but the original office document may retain structural traces.
 objective: Inspect OOXML metadata and compare its copy-level clues with the registered records.
 generator: ooxml_metadata
-master: data/masters/m3_acquisition.md
+master: data/masters/cases/m5_trial_summary.md
 seed_offset: 404
 tools: [ooxml]
 hints:

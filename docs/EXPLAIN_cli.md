@@ -20,7 +20,7 @@ per-channel survival, and elapsed time as CSV and plots.
 transform to a copy and refuses to overwrite its input.
 `custody add` records a file's SHA-256 in the JSONL chain and SQLite mirror;
 `custody verify` checks the JSONL event chain and `custody show` lists its events.
-`intake` creates case-scoped original and working copies and starts the custody log.
+`intake` creates case-scoped original and working copies and records evidence and custody metadata in SQLite.
 `analyze --report output.docx` or `output.pdf` writes a ranking report with the evidence hash and stated limits.
 `serve` opens the PySide6 interface for the same issue, analysis, intake, and benchmark flows.
 

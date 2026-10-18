@@ -124,5 +124,30 @@ def test_workbench_registers_and_issues_through_sqlite_registry(tmp_path) -> Non
             "SELECT master_id, employee_id, format, path FROM copies"
         ).fetchone()
     assert row == ("M1", "E001", "txt", str(output.resolve()))
+
+    source = tmp_path / "leak.txt"
+    source.write_text("synthetic leak", encoding="utf-8")
+    intake_fields = window.fields["intake"]
+    intake_fields["evidence"].setText(str(source))
+    intake_fields["case_id"].setText("CASE-01")
+    intake_fields["actor"].setText("examiner-01")
+    intake_fields["root"].setText(str(tmp_path / "cases"))
+    intake_fields["database"].setText(str(database))
+    window._intake()
+    intaked = QEventLoop()
+    window._thread.finished.connect(intaked.quit)
+    QTimer.singleShot(10000, intaked.quit)
+    intaked.exec()
+    application.processEvents()
+    assert window.status.text().startswith("Intake complete: evidence ")
+    with sqlite3.connect(database) as connection:
+        evidence = connection.execute(
+            "SELECT case_id, sha256 FROM evidence"
+        ).fetchone()
+        custody = connection.execute(
+            "SELECT action, object_sha256 FROM custody_log"
+        ).fetchone()
+    assert evidence[0] == "CASE-01"
+    assert custody == ("intake", evidence[1])
     window.close()
     application.processEvents()

@@ -119,6 +119,7 @@ def build_pages(owner) -> QTabWidget:
             "intake", "Intake and custody",
             (("evidence", "Evidence file", ""), ("case_id", "Case ID", ""),
              ("actor", "Synthetic examiner ID", ""), ("root", "Case storage root", "evidence"),
+             ("database", "SQLite registry", ".molehunt/molehunt.sqlite3"),
              ("ledger", "Custody log to verify", "")),
             "Intake evidence", owner._intake,
         ),

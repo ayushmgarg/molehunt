@@ -23,7 +23,7 @@ from molehunt.detect.fuse import FusedScore, fuse_scores
 from molehunt.detect.ingest import IngestedEvidence, ingest
 from molehunt.detect.logs import read_fusion_logs
 from molehunt.detect.score import CandidateScore, score_candidates
-from molehunt.intake import intake_evidence
+from molehunt.intake_service import RegisteredIntake, intake_case
 from molehunt.issuance import IssueResult, issue_registered_copy, register_master_file
 from molehunt.report import write_analysis_report
 from molehunt.ui.pages import build_pages
@@ -364,16 +364,22 @@ class MoleHuntWindow(QMainWindow):
             case_id = fields["case_id"].text().strip()
             actor = fields["actor"].text().strip()
             root = self._field_path("intake", "root")
+            database = self._field_path("intake", "database")
             self._start_task(
-                lambda: intake_evidence(evidence, case_id, actor=actor, root=root),
+                lambda: intake_case(
+                    evidence, case_id, actor=actor, root=root, database=database
+                ),
                 self._render_intake,
             )
         except (OSError, ValueError) as error:
             self.status.setText(f"Intake error: {error}")
 
-    def _render_intake(self, result) -> None:
+    def _render_intake(self, registered: RegisteredIntake) -> None:
+        result = registered.intake
         self.fields["intake"]["ledger"].setText(str(result.custody_log))
-        self.status.setText(f"Intake complete: original {result.sha256[:8]}…")
+        self.status.setText(
+            f"Intake complete: evidence {registered.evidence_id}; hash {result.sha256[:8]}…"
+        )
 
     def _verify(self) -> None:
         try:

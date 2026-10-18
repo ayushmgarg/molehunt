@@ -23,12 +23,11 @@ from molehunt.detect.fuse import fuse_scores
 from molehunt.detect.ingest import ingest
 from molehunt.detect.logs import read_fusion_logs
 from molehunt.detect.score import score_candidates
-from molehunt.intake import intake_evidence
+from molehunt.intake_service import intake_case
 from molehunt.issuance import issue_registered_copy, register_master_file
 from molehunt.registry import (
     initialize_database,
     record_custody_entry,
-    record_evidence,
 )
 from molehunt.report import write_analysis_report
 
@@ -416,17 +415,19 @@ def intake(
 ) -> None:
     """Stage evidence and register its hash and custody entry in SQLite."""
     try:
-        initialize_database(db_file)
-        result = intake_evidence(evidence, case_id, actor=actor, root=root)
-        evidence_id = record_evidence(
-            db_file, case_id, result.original, result.working_copy, result.sha256
+        registered = intake_case(
+            evidence,
+            case_id,
+            actor=actor,
+            root=root,
+            database=db_file,
         )
-        record_custody_entry(db_file, result.custody_entry)
     except (OSError, ValueError, sqlite3.Error) as error:
         typer.echo(f"Error: {error}", err=True)
         raise typer.Exit(code=2) from error
+    result = registered.intake
     typer.echo(f"Case: {result.case_id}")
-    typer.echo(f"Evidence ID: {evidence_id}")
+    typer.echo(f"Evidence ID: {registered.evidence_id}")
     typer.echo(f"Original: {result.original}")
     typer.echo(f"Working copy: {result.working_copy}")
     typer.echo(f"SHA-256: {result.sha256}")

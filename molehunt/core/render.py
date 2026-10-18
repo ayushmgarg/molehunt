@@ -1,4 +1,6 @@
-"""Render employee codewords into text, DOCX (C6 metadata), and PDF (C7 dots) copies."""
+"""Render employee codewords into text, DOCX (C6 metadata), PDF and PNG (C7 dots) copies.
+
+PDF and PNG copies use the monospace OCR font so a scan can be read back."""
 
 from __future__ import annotations
 
@@ -81,12 +83,34 @@ def render_pdf(
                                           stroke=0, fill=1)
         canvas.restoreState()
 
+    from reportlab.pdfbase import pdfmetrics
+    from reportlab.pdfbase.ttfonts import TTFont
+
+    from molehunt.channels.ocr import font_path
+
+    if "MoleHuntMono" not in pdfmetrics.getRegisteredFontNames():
+        pdfmetrics.registerFont(TTFont("MoleHuntMono", font_path()))
     styles = getSampleStyleSheet()
+    body = styles["BodyText"].clone("mono", fontName="MoleHuntMono", fontSize=10, leading=16)
     story = []
     for line in render_text(template, slots, codeword).split("\n"):
-        story.append(Paragraph(escape(line), styles["BodyText"]) if line.strip()
+        story.append(Paragraph(escape(line), body) if line.strip()
                      else Spacer(1, 6))
     output = BytesIO()
     SimpleDocTemplate(output, pagesize=A4, topMargin=60, bottomMargin=60, invariant=1).build(
         story, onFirstPage=dots, onLaterPages=dots)
+    return output.getvalue()
+
+
+def render_png(template: Template, slots: Sequence[Slot], codeword: Sequence[int],
+               metadata: DotMetadata) -> bytes:
+    """A print-like page image: OCR font text plus a yellow C7 grid in the margin."""
+    from molehunt.channels.ocr import render_page
+    from molehunt.channels.printdots import render_dot_grid
+
+    page = render_page(render_text(template, slots, codeword))
+    marked = render_dot_grid(page, metadata, origin=(20, 20), cell_size=6, radius=1,
+                             color="#F2D400")
+    output = BytesIO()
+    marked.save(output, format="PNG")
     return output.getvalue()

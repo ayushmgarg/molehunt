@@ -10,7 +10,7 @@ from typing import Annotated
 import typer
 
 from molehunt import __version__
-from molehunt.analysis import analyze_collusion, analyze_text
+from molehunt.analysis import analyze_collusion, analyze_text, evidence_text
 from molehunt.attacks.transform import attack_text
 from molehunt.channels.suggest import suggest_slots as find_slot_suggestions
 from molehunt.cli_app import (
@@ -207,13 +207,12 @@ def analyze(
         source = master.read_text(encoding="utf-8")
         employee_ids = read_employee_ids(employees)
         record = ingest(evidence)
-        if record.text is None:
-            raise ValueError("PNG dot metadata is available; text OCR is not implemented")
+        text = evidence_text(record)
         if collusion:
             typer.echo(f"Evidence SHA-256: {record.sha256}")
-            _print_collusion(source, key, employee_ids, record.text, target)
+            _print_collusion(source, key, employee_ids, text, target)
             return
-        result = analyze_text(source, key, employee_ids, record.text, flip_rate=flip_rate)
+        result = analyze_text(source, key, employee_ids, text, flip_rate=flip_rate)
         decision = result.decision(alpha=target)
         fused = None
         if logs is not None:

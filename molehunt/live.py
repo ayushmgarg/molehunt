@@ -7,8 +7,9 @@ the host screen. Routes: ``/`` join page, ``/issue`` (POST: employee id + format
 intake with hash + custody, then analysis), ``/board`` (host dashboard, refreshes
 itself), ``/board.json``. Uploads are capped at 2 MB, saved under generated
 names (no client path is trusted), and only .txt/.md/.docx/.png are accepted.
-A PNG is read for C7 dots; the station byte is matched against each employee's
-keyed PDF station id, so a phone photo of a printed PDF names candidate copies.
+A PNG is read with the classical OCR and attributed like text; if it holds no
+readable text, its C7 dots are decoded and the station byte is matched against
+each employee's keyed station id, naming candidate copies.
 """
 
 from __future__ import annotations
@@ -25,7 +26,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs
 
-from molehunt.analysis import analyze_text
+from molehunt.analysis import analyze_text, evidence_text
 from molehunt.channels.dot_locate import scan_dot_grid
 from molehunt.core.keys import digest
 from molehunt.detect.ingest import ingest
@@ -35,7 +36,7 @@ from molehunt.live_pages import board_page, join_page, result_page
 from molehunt.registry import get_master, initialize_database
 
 MAX_UPLOAD = 2 * 1024 * 1024
-ALLOWED = {".txt", ".md", ".docx", ".png"}
+ALLOWED = {".txt", ".md", ".docx", ".png", ".jpg", ".jpeg"}
 
 
 @dataclass
@@ -63,8 +64,8 @@ class LiveState:
     def issue(self, employee: str, fmt: str) -> Path:
         if employee not in self.roster:
             raise ValueError("unknown employee id")
-        if fmt not in {"txt", "docx", "pdf"}:
-            raise ValueError("format must be txt, docx, or pdf")
+        if fmt not in {"txt", "docx", "pdf", "png"}:
+            raise ValueError("format must be txt, docx, pdf, or png")
         with self.lock:
             stamp = datetime.now(UTC).strftime("%H%M%S%f")
             path = self.workdir / "issued" / f"{employee}-{stamp}.{fmt}"
@@ -75,7 +76,7 @@ class LiveState:
         """Intake the upload (hash + custody) and attribute it."""
         suffix = Path(name).suffix.casefold() or ".txt"
         if suffix not in ALLOWED:
-            raise ValueError("upload must be .txt, .md, .docx, or .png")
+            raise ValueError("upload must be .txt, .md, .docx, .png, or .jpg")
         with self.lock:
             number = len(self.leaks) + 1
             case_id = f"LIVE-{number:03d}"
@@ -86,12 +87,13 @@ class LiveState:
                                  root=self.workdir / "evidence", database=self.database)
         record = {"case": case_id, "received": datetime.now(UTC).isoformat(timespec="seconds"),
                   "file": name, "sha256": intake.intake.sha256}
-        if suffix == ".png":
+        evidence = ingest(intake.intake.working_copy)
+        text = evidence_text(evidence)
+        if suffix in {".png", ".jpg", ".jpeg"} and len(text.split()) < 20:
             record.update(self._dots(upload))
         else:
-            evidence = ingest(intake.intake.working_copy)
             result = analyze_text(self.master.read_text(encoding="utf-8"), self.key,
-                                  self.roster, evidence.text or "")
+                                  self.roster, text)
             decision = result.decision()
             top = result.scores[0]
             record.update({

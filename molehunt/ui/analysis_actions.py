@@ -9,7 +9,7 @@ from pathlib import Path
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QTableWidgetItem
 
-from molehunt.analysis import analyze_text
+from molehunt.analysis import analyze_text, evidence_text
 from molehunt.attacks.harness import run_text_benchmark, write_benchmark
 from molehunt.core.autoslots import prepare_master
 from molehunt.core.keys import KEY_BYTES
@@ -62,10 +62,8 @@ def _analyze_inputs(
     key = _key(key_path)
     employee_ids = _employee_ids(roster_path)
     evidence = ingest(evidence_path)
-    if evidence.text is None:
-        raise ValueError("PNG text OCR is unavailable")
     result = analyze_text(
-        master_path.read_text(encoding="utf-8"), key, employee_ids, evidence.text
+        master_path.read_text(encoding="utf-8"), key, employee_ids, evidence_text(evidence)
     )
     slots, observations = result.prepared.slots, result.observations
     codewords, scores = result.codewords, result.scores

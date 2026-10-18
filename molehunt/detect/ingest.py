@@ -71,7 +71,7 @@ def ingest(
     elif suffix == ".docx":
         decoded_text = _docx_text(raw)
         file_format = "docx"
-    elif suffix == ".png":
+    elif suffix in {".png", ".jpg", ".jpeg"}:
         try:
             with Image.open(BytesIO(raw)) as image:
                 image.load()
@@ -84,9 +84,9 @@ def ingest(
                     )
         except (UnidentifiedImageError, OSError, ValueError) as error:
             raise ValueError("invalid PNG evidence or dot grid") from error
-        file_format = "png"
+        file_format = suffix.lstrip(".")
     else:
-        raise ValueError("supported evidence formats: txt, md, docx, png")
+        raise ValueError("supported evidence formats: txt, md, docx, png, jpg")
 
     return IngestedEvidence(
         path=str(target),

@@ -11,7 +11,13 @@ from pathlib import Path
 from molehunt.core.autoslots import master_title, prepare_master
 from molehunt.core.codes import generate_codewords
 from molehunt.core.keys import KEY_BYTES
-from molehunt.core.render import pdf_dot_metadata, render_docx, render_pdf, render_text
+from molehunt.core.render import (
+    pdf_dot_metadata,
+    render_docx,
+    render_pdf,
+    render_png,
+    render_text,
+)
 from molehunt.core.tardos import generate_tardos_biases, generate_tardos_codeword
 from molehunt.registry import (
     add_employee,
@@ -93,7 +99,10 @@ def issue_registered_copy(
     else:
         raise ValueError("code must be 'single' or 'tardos'")
     output = Path(output_path)
-    if output.suffix.casefold() == ".pdf":
+    if output.suffix.casefold() == ".png":
+        content = render_png(template, slots, bits,
+                             pdf_dot_metadata(key, employee_id, datetime.now(UTC)))
+    elif output.suffix.casefold() == ".pdf":
         content = render_pdf(template, slots, bits,
                              pdf_dot_metadata(key, employee_id, datetime.now(UTC)))
     elif output.suffix.casefold() == ".docx":
@@ -101,7 +110,7 @@ def issue_registered_copy(
     elif output.suffix.casefold() in {".txt", ".md"}:
         content = render_text(template, slots, bits).encode("utf-8")
     else:
-        raise ValueError("output file must use .txt, .md, .docx, or .pdf")
+        raise ValueError("output file must use .txt, .md, .docx, .pdf, or .png")
     if output.exists():
         raise FileExistsError(f"copy output already exists: {output}")
     add_employee(database_path, employee_id)

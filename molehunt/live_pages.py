@@ -33,11 +33,11 @@ def join_page(roster: list[str]) -> str:
 you pick. Ask the host for the PIN.</p>
 <div class=card><h2>1. Get your copy</h2><form method=post action=/issue>
 Employee <select name=employee>{options}</select>
-Format <select name=format><option>txt</option><option>docx</option><option>pdf</option></select>
+Format <select name=format><option>txt</option><option>docx</option><option>pdf</option><option>png</option></select>
 PIN <input name=pin size=6 required> <button>Download my copy</button></form></div>
 <div class=card><h2>2. Leak it (edited, pasted, or photographed)</h2>
 <form method=post action=/leak enctype=multipart/form-data>
-File (.txt .md .docx .png) <input type=file name=file><br>
+File (.txt .md .docx .png .jpg) <input type=file name=file><br>
 or paste text<br><textarea name=text rows=6 cols=80></textarea><br>
 PIN <input name=pin size=6 required> <button>Send leak to the examiner</button></form></div>
 <p><a href=/board style="color:#D9822B">Examiner board</a></p>""")

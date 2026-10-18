@@ -23,6 +23,7 @@ from molehunt.core.tardos import (
 from molehunt.detect.align import align_to_master
 from molehunt.detect.decide import Decision, decide
 from molehunt.detect.extract import SlotObservation, erase_uniform_channels, extract_variants
+from molehunt.detect.ingest import IngestedEvidence
 from molehunt.detect.score import CandidateScore, score_candidates
 from molehunt.detect.tardos import (
     TardosCalibration,
@@ -155,3 +156,15 @@ def analyze_collusion(
     return CollusionResult(
         prepared, observations, biases, codewords, scores, calibration, accused, violations
     )
+
+
+def evidence_text(record: IngestedEvidence) -> str:
+    """Decoded text of an evidence file; PNG scans are read with the classical OCR."""
+    if record.text is not None:
+        return record.text
+    from PIL import Image
+
+    from molehunt.channels.ocr import ocr_image
+
+    with Image.open(record.path) as image:
+        return ocr_image(image)

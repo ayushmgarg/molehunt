@@ -7,6 +7,7 @@ from typing import Annotated
 import typer
 
 from molehunt import __version__
+from molehunt.attacks.harness import run_text_benchmark, write_benchmark
 from molehunt.core.codes import generate_codewords
 from molehunt.core.keys import KEY_BYTES, load_or_create_key
 from molehunt.core.slots import allocate_slots
@@ -105,6 +106,56 @@ def analyze(
         typer.echo("Finding: cannot distinguish; no slots were observed.")
     else:
         typer.echo("Finding: ranked candidates only; decision threshold needs benchmark calibration.")
+
+
+@app.command()
+def bench(
+    master: Annotated[Path, typer.Option("--master", help="Variation-marked synthetic master")],
+    employees: Annotated[Path, typer.Option("--employees", help="Synthetic roster CSV with id column")],
+    key_file: Annotated[Path, typer.Option("--key-file")] = Path(".molehunt/master.key"),
+    attacks: Annotated[str, typer.Option(help="Comma-separated attack IDs, A1 through A10")]
+    = "A1,A2,A3,A4,A5,A6,A7,A8,A9,A10",
+    strengths: Annotated[str, typer.Option(help="Comma-separated strengths from 0 to 1")]
+    = "0.25,0.5,0.75,1.0",
+    seeds: Annotated[str, typer.Option(help="Comma-separated deterministic RNG seeds")]
+    = "0",
+    output: Annotated[Path, typer.Option("--output", help="Benchmark artifact directory")]
+    = Path("bench"),
+    flip_rate: Annotated[float, typer.Option("--flip-rate", min=0.000001, max=0.499999)]
+    = 0.15,
+) -> None:
+    """Measure text attack survival and candidate ranking on synthetic copies."""
+    try:
+        key = key_file.read_bytes()
+        if len(key) != KEY_BYTES:
+            raise ValueError(f"key file must contain {KEY_BYTES} bytes")
+        template = parse_template(master.read_text(encoding="utf-8"))
+        slots = allocate_slots(template, key)
+        employee_ids = _read_employee_ids(employees)
+        attack_ids = [value.strip() for value in attacks.split(",") if value.strip()]
+        strength_values = [float(value.strip()) for value in strengths.split(",")]
+        seed_values = [int(value.strip()) for value in seeds.split(",")]
+        rows = run_text_benchmark(
+            template,
+            slots,
+            key,
+            employee_ids,
+            attack_ids=attack_ids,
+            strengths=strength_values,
+            seeds=seed_values,
+            flip_rate=flip_rate,
+        )
+        artifacts = write_benchmark(rows, output)
+    except (OSError, UnicodeError, ValueError) as error:
+        typer.echo(f"Error: {error}", err=True)
+        raise typer.Exit(code=2) from error
+
+    top1 = sum(row.top1_correct for row in rows) / len(rows)
+    typer.echo(f"Runs: {len(rows)}")
+    typer.echo(f"Overall top-1 accuracy: {top1:.3f}")
+    for label, path in artifacts.items():
+        typer.echo(f"{label}: {path}")
+    typer.echo("Results apply only to these synthetic inputs and configured runs.")
 
 
 if __name__ == "__main__":

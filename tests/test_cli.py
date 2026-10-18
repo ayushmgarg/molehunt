@@ -86,3 +86,40 @@ def test_analyze_rejects_roster_without_id_column(tmp_path: Path) -> None:
     )
     assert result.exit_code != 0
     assert "id" in result.stderr.lower()
+
+
+def test_bench_writes_measurements_for_requested_attacks(tmp_path: Path) -> None:
+    key_path = tmp_path / "master.key"
+    key_path.write_bytes(bytes(range(32)))
+    master_path = tmp_path / "master.md"
+    master_path.write_text(
+        "\n".join(
+            f"Section {index:02}: " + "{{lex:begin|start}}."
+            for index in range(32)
+        ),
+        encoding="utf-8",
+    )
+    roster_path = tmp_path / "employees.csv"
+    roster_path.write_text("id\nE001\nE002\n", encoding="utf-8")
+    result_dir = tmp_path / "bench-output"
+
+    result = runner.invoke(
+        app,
+        [
+            "bench",
+            "--master", str(master_path),
+            "--employees", str(roster_path),
+            "--key-file", str(key_path),
+            "--attacks", "A1,A3",
+            "--strengths", "0,1",
+            "--seeds", "7",
+            "--output", str(result_dir),
+        ],
+    )
+
+    assert result.exit_code == 0, result.stdout
+    assert "Runs: 8" in result.stdout
+    assert (result_dir / "results" / "runs.csv").is_file()
+    assert (result_dir / "results" / "survival.csv").is_file()
+    assert (result_dir / "plots" / "accuracy.png").is_file()
+    assert (result_dir / "plots" / "survival.png").is_file()

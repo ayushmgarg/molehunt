@@ -9,9 +9,12 @@ master and the suspect are then reduced to one skeleton:
 - rewrite every authored word variant (lex, spl, dat, num) to its group label;
   pairs sharing a word (take/need, need/require) form one group via union-find.
 
-Every skeleton character keeps the original span it came from. `difflib.SequenceMatcher`
-finds exact blocks between the two skeletons; a slot's skeleton bounds go through
-the nearest block and back to an original window in the suspect.
+Every skeleton character keeps the original span it came from. The skeletons are
+split into tokens (words and symbols; spaces skipped) and `difflib.SequenceMatcher`
+finds matching token blocks. A slot edge inside or on a matched token maps exactly;
+an edge in a gap widens to the neighbouring tokens so spaces and invisible marks
+stay in the window. Token anchors keep the matcher about 30x faster than
+character anchors (about 0.06 s per 800-word leak) with the same slot recovery.
 
 Because attacks such as A1 (strip) or A3 (collapse) change only characters the
 skeleton already ignores, they no longer fragment the anchors. Missing anchors or

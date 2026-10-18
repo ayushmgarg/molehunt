@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import unicodedata
 from collections.abc import Sequence
 from dataclasses import dataclass
 
@@ -25,9 +26,14 @@ def _word_character(character: str) -> bool:
     return character.isalnum() or character == "_"
 
 
+def _blank(region: str) -> bool:
+    """True when a region holds only whitespace or invisible format characters."""
+    return all(ch.isspace() or unicodedata.category(ch) == "Cf" for ch in region)
+
+
 def _matches(region: str, variant: str, channel: str) -> list[int]:
     if not variant:
-        return [0] if not region else []
+        return [0] if _blank(region) else []
     positions = []
     start = 0
     while True:

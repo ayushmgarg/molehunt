@@ -17,7 +17,7 @@ from molehunt.channels.homoglyph import confusable_skeleton
 from molehunt.channels.lexical import SYNONYM_SUGGESTIONS
 
 _PUNCTUATION = {
-    "“": '"', "”": '"', "‘": "'", "’": "'", "–": "-", "—": "-", "…": "...",
+    "\u201c": '"', "\u201d": '"', "\u2018": "'", "\u2019": "'", "\u2013": "-", "\u2014": "-", "\u2026": "...",
 }
 
 
@@ -50,7 +50,7 @@ def attack_text(
     seed: int = 0,
     variants: Sequence[tuple[str, str]] = (),
 ) -> str:
-    """Apply one A1–A11 transform; each random choice derives from ``seed``."""
+    """Apply one A1\u2013A11 transform; each random choice derives from ``seed``."""
     _validate_strength(strength)
     rng = random.Random(seed)
     if strength == 0 and attack_id != "A8":

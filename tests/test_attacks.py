@@ -10,11 +10,11 @@ def test_a1_strips_invisible_format_characters() -> None:
 
 
 def test_a2_applies_nfkc() -> None:
-    assert attack_text("ＡＢＣ", "A2", strength=1) == "ABC"
+    assert attack_text("\uff21\uff22\uff23", "A2", strength=1) == "ABC"
 
 
 def test_a2b_maps_supported_confusables() -> None:
-    assert attack_text("pаypаl", "A2b", strength=1) == "paypal"
+    assert attack_text("p\u0430yp\u0430l", "A2b", strength=1) == "paypal"
 
 
 def test_a3_collapses_whitespace_and_nbsp() -> None:
@@ -22,7 +22,7 @@ def test_a3_collapses_whitespace_and_nbsp() -> None:
 
 
 def test_a4_normalizes_punctuation() -> None:
-    assert attack_text("“wait”—yes…", "A4", strength=1) == '"wait"-yes...'
+    assert attack_text("\u201cwait\u201d\u2014yes\u2026", "A4", strength=1) == '"wait"-yes...'
 
 
 def test_a5_plain_retype_removes_invisibles_and_metadata_like_spacing() -> None:
@@ -79,10 +79,10 @@ def test_unknown_attack_is_rejected() -> None:
 
 
 def test_a11_text_ocr_model_drops_invisible_and_typography_then_adds_char_errors() -> None:
-    text = "Plan​ to Рay “now” — fast.  " * 40
+    text = "Plan\u200b to \u0420ay \u201cnow\u201d\u00a0\u2014 fast.  " * 40
     clean = attack_text(text, "A11", strength=0.0001, seed=3)
-    assert "​" not in clean and "Р" not in clean and " " not in clean
-    assert "“" not in clean and "—" not in clean and "  " not in clean
+    assert "\u200b" not in clean and "\u0420" not in clean and "\u00a0" not in clean
+    assert "\u201c" not in clean and "\u2014" not in clean and "  " not in clean
     noisy = attack_text(text, "A11", strength=1.0, seed=3)
     assert noisy == attack_text(text, "A11", strength=1.0, seed=3)
     changed = sum(a != b for a, b in zip(clean, noisy, strict=False))
@@ -92,7 +92,7 @@ def test_a11_text_ocr_model_drops_invisible_and_typography_then_adds_char_errors
 def test_attack_chain_applies_steps_in_order_with_derived_seeds() -> None:
     from molehunt.attacks.transform import attack_chain
 
-    text = "Begin​ “the”   plan.\n\nSecond part.\n\nThird part."
+    text = "Begin\u200b \u201cthe\u201d   plan.\n\nSecond part.\n\nThird part."
     chained = attack_chain(text, ("A1", "A3", "A4"), strength=1.0, seed=2)
     assert chained == 'Begin "the" plan. Second part. Third part.'
     assert chained == attack_chain(text, ("A1", "A3", "A4"), strength=1.0, seed=2)

@@ -1,128 +1,125 @@
 # MoleHunt
 
-Forensic document attribution suite with an investigation casebook. A company
-issues each employee a uniquely fingerprinted copy of a confidential document.
-When a copy leaks (edited, normalised, partial, printed, or merged from several
-copies), MoleHunt recovers the fingerprint, ranks the issued copies with a
-likelihood ratio, fuses that with access/print/auth logs, and writes an
-examiner-style report.
+**Find which copy of a confidential document leaked.**
 
-Offline, synthetic data only, no machine learning. It ranks **copies**, not
-people: a match says which issued copy a leak derives from, never who sent it.
+Each employee gets their own copy of a document with a hidden fingerprint: invisible
+characters, look-alike letters, special spaces, synonym and spelling choices, Word
+metadata, and printer dots. When a copy leaks (edited, retyped, cut down, printed and
+photographed, or two copies merged), MoleHunt reads what is left of the fingerprint,
+ranks the copies with a likelihood ratio, and writes a forensic report.
 
-Three modes on one engine:
+Offline. Synthetic people and documents only. No AI or machine learning, just statistics.
+A match tells you **which copy** leaked, not **who** leaked it.
 
-| Mode | What you do |
-|---|---|
-| Lab | register a master, issue copies, intake evidence, analyse, report |
-| Casebook | solve 7 seeded investigations; tools unlock as you progress |
-| Red Team | scrub your own copy under a 70% utility floor and try to evade the detector |
+---
 
-## Install
+## 1. Install (once)
 
-Needs [uv](https://docs.astral.sh/uv/). The project pins Python 3.11.
+Needs [uv](https://docs.astral.sh/uv/) (Python manager).
 
 ```bash
 uv python install 3.11
 uv sync --python 3.11
+uv run molehunt init
+```
+
+`init` creates `.molehunt/` with your secret key, the database, and the custody log.
+
+Check it works:
+
+```bash
 uv run pytest -q
 ```
 
-## Quick start (Lab mode, CLI)
+---
 
-```bash
-uv run molehunt init
-uv run molehunt roster --count 50 -o data/demo/roster50.csv
-uv run molehunt register data/masters/m1_roadmap.md --master-id M1
-uv run molehunt issue --master M1 --employees data/demo/roster50.csv --format txt,docx,pdf,png
-uv run molehunt attack --name A5 --strength 1 data/demo/issued/E007.txt -o reports/generated/leak.txt
-uv run molehunt intake reports/generated/leak.txt C-001 --actor EX-01
-uv run molehunt analyze reports/generated/leak.txt --master data/masters/m1_roadmap.md --employees data/demo/roster50.csv
-uv run molehunt report --case C-001 -o reports/generated/C-001.docx --master data/masters/m1_roadmap.md --employees data/demo/roster50.csv --examiner EX-01
-uv run molehunt custody demo
-```
-
-Evidence can be .txt, .md, .docx, or a .png/.jpg scan of a printed copy (read
-with a classical, non-ML template OCR; see `docs/EXPLAIN_ocr.md`).
-
-`analyze` prints the ranking (matches, z, binomial p, log10 LR) and a finding:
-`attribute` (with the ENFSI-style verbal scale), `cannot distinguish`, or
-`no attribution`. `custody demo` builds an 8-entry hash chain, flips one byte,
-and shows `BROKEN at seq 7`.
-
-Other commands: `suggest-slots`, `issue --code tardos` + `analyze --collusion`
-(collusion tracing), `analyze --logs access.csv` (log fusion), `custody add |
-verify | show | intake`, `redteam --tools strip,collapse,truncate:0.8`,
-`bench`. Run `uv run molehunt --help` for all options.
-
-## Workbench (desktop UI)
+## 2. Open the app
 
 ```bash
 uv run molehunt serve
 ```
 
-Tabs: Evidence analysis (ranking, slot matrix, report), Issue copy, Intake and
-custody, Red Team bench (benchmark runner + Red Team boss with utility meter
-and leaderboard), Casebook (seeded cases, hints, Section 10 grading), Evidence
-tools (bytes and invisible characters, diff vs master, timeline, OOXML
-explorer, image dot analyser, Tardos scorer with threshold slider, notes).
-Tick "Casebook mode" to lock tools until each case earns them.
+| Tab | What you do there |
+|---|---|
+| Evidence analysis | Pick a leaked file, master, roster, key, click **Run analysis**. See the ranking, slot matrix, and finding. Write a report. |
+| Issue copy | Register a master document, then issue a fingerprinted copy for an employee. |
+| Intake and custody | Bring evidence in (hash + read-only original + working copy), verify the custody log. |
+| Red Team bench | Run the benchmark, or play the mole: scrub your copy and try to fool the detector. |
+| Casebook | Play the 7 training cases. Tick "Casebook mode" so tools unlock as you progress. |
+| Evidence tools | Hex view, invisible character reveal, diff vs master, timeline, Word metadata explorer, printer dot decoder, collusion scorer, notes. |
 
-## Live demo across laptops (same Wi-Fi)
+---
+
+## 3. The basic flow from the command line
+
+```bash
+# give every employee a copy
+uv run molehunt register data/masters/m1_roadmap.md --master-id M1
+uv run molehunt issue --master M1 --employees data/demo/roster50.csv --format txt,docx,pdf,png
+
+# pretend someone leaked E007's copy after retyping it
+uv run molehunt attack --name A5 data/demo/issued/E007.txt -o reports/generated/leak.txt
+
+# take it in as evidence and analyse it
+uv run molehunt intake reports/generated/leak.txt C-001 --actor EX-01
+uv run molehunt analyze reports/generated/leak.txt --master data/masters/m1_roadmap.md --employees data/demo/roster50.csv
+
+# full examiner report (DOCX or PDF)
+uv run molehunt report --case C-001 -o reports/generated/C-001.docx --master data/masters/m1_roadmap.md --employees data/demo/roster50.csv
+
+# show that tampering with the custody log is caught
+uv run molehunt custody demo
+```
+
+Evidence can be `.txt`, `.md`, `.docx`, or a `.png` / `.jpg` scan of a printed copy.
+
+---
+
+## 4. Live demo with two laptops (same Wi-Fi)
+
+On the presenting laptop:
 
 ```bash
 uv run molehunt live
 ```
 
-The host prints a URL and a 6-digit PIN. On another laptop or phone, open the URL,
-pick an employee, and download a fingerprinted copy (txt, docx, or pdf). Edit or
-scrub it (or print the PDF and photograph it), then upload it on the same page.
-The host's `/board` page (put it on the projector) refreshes every 3 seconds with
-the hash, custody entry, ranking, and finding for each leak. Allow Python through
-the Windows firewall when asked. This is the only network feature; it is opt-in.
-Step-by-step test: `docs/LIVE_DEMO.md`.
+It prints a **PIN** and a **Join** link. On the second laptop or a phone:
 
-## Benchmark
+1. Open the Join link, pick an employee, enter the PIN, download the copy.
+2. Edit it, retype it, or print it and take a photo.
+3. Upload it back on the same page.
 
-```bash
-uv run molehunt bench            # same as: make bench
-```
+Open the **Board** link on the projector. Each leak appears within 3 seconds with its
+hash, the ranking, and the finding. Full steps: [docs/LIVE_DEMO.md](docs/LIVE_DEMO.md).
+If the other laptop can't connect, set the Wi-Fi to **Private** and allow Python
+through the firewall.
 
-Runs the Section 6 protocol: 3 masters x 50 employees x 20 leakers x 12 attacks
-(A1-A11, A2b) x 3 strengths x 10 seeds, plus chains and Tardos collusion trials,
-in parallel workers (about 20 minutes on 8 cores). Writes `bench/results/*.csv`,
-`summary.json`, `targets.csv`, and plots. The archived run and its numbers are in
-[docs/BENCHMARK.md](docs/BENCHMARK.md); every claim about attack survival comes
-from there, not from the code.
+---
 
-## Six-minute demo
+## 5. Other things you can run
 
-| Time | Action |
+| Command | What it does |
 |---|---|
-| 0:00 | Pitch: three modes, one engine; copies not people |
-| 0:30 | `register` + batch `issue`; Evidence tools > Diff vs master on one copy |
-| 1:30 | `attack` (A5 + truncate) then `analyze` and `report --case`; show LR and verbal scale |
-| 2:30 | `custody verify` passes; `custody demo` shows `BROKEN at seq 7` |
-| 3:30 | Casebook Case 1: hex view, invisible revealer bit string, submit, score |
-| 4:30 | `docs/benchmark/plots/survival.png` and `targets.csv`; state the weak spots |
-| 5:15 | Red Team boss: 30-second attempt to beat the detector |
-| 5:45 | Limits: copy vs person, heavy paraphrase, very short leaks |
+| `uv run molehunt redteam --tools strip,collapse,truncate:0.8` | Red Team: try to scrub your copy and evade the detector |
+| `uv run molehunt issue E003 --master M1 -o x.txt --code tardos` then `analyze x.txt ... --collusion` | Catch two people who merged their copies |
+| `uv run molehunt analyze leak.txt ... --logs access.csv` | Combine the fingerprint with access/print logs |
+| `uv run molehunt bench` | Full benchmark (about 20 min); results in `bench/` |
+| `uv run molehunt --help` | Every command |
 
-## Layout
+---
+
+## 6. Results
+
+Benchmark: 25,200 attacked leaks, all 9 plan targets passed, 2 wrong accusations in
+25,200. The weak spots are listed honestly in [docs/BENCHMARK.md](docs/BENCHMARK.md).
+
+## 7. Where things are
 
 ```text
-molehunt/core      keys, template, slots, autoslots (C1/C2/C3b), codes, tardos, render
-molehunt/channels  zerowidth, whitespace, punct, homoglyph, lexical, spelling, docx_meta, printdots, dot_locate
-molehunt/detect    ingest, align, extract, score, decide, tardos, fuse, logs
-molehunt/attacks   transform (A1-A11), collusion (A12), harness, bench_artifacts, collusion_bench
-molehunt/game      casebook, generator, case_evidence, tools, validator, leaderboard, redteam, cases/*.yaml
-molehunt/ui        PySide6 workbench
-data/masters       three benchmark masters (650-815 words, 262-267 slots) + cases/ four case masters
-docs               SPEC overrides, DECISIONS, EXPLAIN_<module> viva notes, VALIDATION, BENCHMARK, PLAN_AUDIT
+molehunt/      the code (core, channels, detect, attacks, game, ui)
+data/masters/  7 synthetic documents (3 benchmark + 4 case stories)
+docs/          explanations per module, decisions, benchmark, validation
+tests/         314 tests
 ```
 
-## Rules
-
-Python 3.11, deterministic (HMAC-SHA256 or seeded RNGs), statistics only, no
-network features, synthetic people and documents only. See `AGENTS.md`,
-`SPEC.md`, and `docs/DECISIONS.md`.
+Viva notes: [docs/EXPLAIN_INDEX.md](docs/EXPLAIN_INDEX.md). Plan coverage: [docs/PLAN_AUDIT.md](docs/PLAN_AUDIT.md).

@@ -11,7 +11,8 @@ copy and records its hash, path, format, master, and synthetic employee in SQLit
 parse, slot, align, extract, and score functions used by the library.
 `bench` renders synthetic copies, runs the selected attacks, then records rankings,
 per-channel survival, and elapsed time as CSV and plots.
-`custody add` records a file's SHA-256; `custody verify` checks the JSONL event chain.
+`custody add` records a file's SHA-256 in the JSONL chain and SQLite mirror;
+`custody verify` checks the JSONL event chain and `custody show` lists its events.
 `intake` creates case-scoped original and working copies and starts the custody log.
 `analyze --report output.docx` or `output.pdf` writes a ranking report with the evidence hash and stated limits.
 `serve` opens the PySide6 interface for the same issue, analysis, intake, and benchmark flows.

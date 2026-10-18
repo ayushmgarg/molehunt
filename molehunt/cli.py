@@ -2,6 +2,7 @@
 
 import csv
 import hashlib
+import json
 import sqlite3
 from pathlib import Path
 from typing import Annotated
@@ -298,15 +299,19 @@ def custody_add(
     details: Annotated[str, typer.Option("--details", help="Event details")]
     = "",
     ledger: Annotated[Path, typer.Option("--ledger", help="JSONL custody log")]
-    = Path("custody.log"),
+    = DEFAULT_CUSTODY_LOG,
+    db_file: Annotated[Path, typer.Option("--db-file", help="SQLite registry path")]
+    = DEFAULT_DB,
 ) -> None:
-    """Append an evidence hash event to the selected custody log."""
+    """Append an evidence hash event to JSONL and mirror it in SQLite."""
     try:
+        initialize_database(db_file)
         digest = sha256_file(evidence)
         entry = append_custody_entry(
             ledger, digest, actor=actor, action=action, details=details
         )
-    except (OSError, ValueError) as error:
+        record_custody_entry(db_file, entry)
+    except (OSError, ValueError, sqlite3.Error) as error:
         typer.echo(f"Error: {error}", err=True)
         raise typer.Exit(code=2) from error
     typer.echo(f"Recorded seq {entry['seq']} for SHA-256 {digest}")
@@ -315,7 +320,7 @@ def custody_add(
 @custody_app.command("verify")
 def custody_verify(
     ledger: Annotated[Path, typer.Option("--ledger", help="JSONL custody log")]
-    = Path("custody.log"),
+    = DEFAULT_CUSTODY_LOG,
 ) -> None:
     """Verify every entry and link in the custody log."""
     try:
@@ -327,6 +332,34 @@ def custody_verify(
         typer.echo(f"BROKEN at seq {result.broken_seq}", err=True)
         raise typer.Exit(code=1)
     typer.echo(f"VERIFIED: {result.entries} entries")
+
+
+@custody_app.command("show")
+def custody_show(
+    ledger: Annotated[Path, typer.Option("--ledger", help="JSONL custody log")]
+    = DEFAULT_CUSTODY_LOG,
+) -> None:
+    """Display custody events in sequence order from the JSONL ledger."""
+    try:
+        entries = [
+            json.loads(line)
+            for line in ledger.read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        ]
+        if any(not isinstance(entry, dict) for entry in entries):
+            raise ValueError("custody ledger entries must be JSON objects")
+    except (OSError, json.JSONDecodeError) as error:
+        typer.echo(f"Error: {error}", err=True)
+        raise typer.Exit(code=2) from error
+    if not entries:
+        typer.echo("No custody entries")
+        return
+    for entry in entries:
+        typer.echo(
+            f"{entry.get('seq', '?')} | {entry.get('ts', '?')} | "
+            f"{entry.get('actor', '?')} | {entry.get('action', '?')} | "
+            f"{entry.get('object_sha256', '?')} | {entry.get('details', '')}"
+        )
 
 
 @app.command()

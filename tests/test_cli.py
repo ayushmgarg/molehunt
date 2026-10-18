@@ -252,17 +252,28 @@ def test_custody_cli_records_and_verifies_evidence(tmp_path: Path) -> None:
     evidence = tmp_path / "leak.txt"
     evidence.write_text("synthetic evidence", encoding="utf-8")
     ledger = tmp_path / "custody.log"
+    database = tmp_path / "registry.sqlite3"
     added = runner.invoke(
         app,
         [
             "custody", "add", str(evidence), "--actor", "examiner-01", "--action", "intake",
-            "--ledger", str(ledger),
+            "--ledger", str(ledger), "--db-file", str(database),
         ],
     )
     assert added.exit_code == 0, added.stdout
     verified = runner.invoke(app, ["custody", "verify", "--ledger", str(ledger)])
     assert verified.exit_code == 0
     assert "VERIFIED: 1 entries" in verified.stdout
+    shown = runner.invoke(app, ["custody", "show", "--ledger", str(ledger)])
+    assert shown.exit_code == 0
+    assert "examiner-01" in shown.stdout
+    assert "intake" in shown.stdout
+    with sqlite3.connect(database) as connection:
+        stored = connection.execute(
+            "SELECT seq, actor, action, object_sha256 FROM custody_log"
+        ).fetchone()
+    assert stored[0:3] == (1, "examiner-01", "intake")
+    assert stored[3] == hashlib.sha256(evidence.read_bytes()).hexdigest()
 
 
 def test_intake_cli_creates_case_files(tmp_path: Path) -> None:

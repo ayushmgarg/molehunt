@@ -14,3 +14,7 @@
 ## Channel C5
 
 - Number-format pairs must retain the same digits when comma, dot, ordinary space, and NBSP grouping marks are removed. Human review remains required for the intended locale and meaning.
+
+## Channel C6
+
+- Existing visible text is preserved while eligible text runs are split at keyed whitespace boundaries. DOCX validation currently uses python-docx; LibreOffice headless validation remains outstanding because LibreOffice is not installed.

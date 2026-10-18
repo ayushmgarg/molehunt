@@ -47,7 +47,7 @@ def test_analysis_report_can_be_written_as_pdf(tmp_path) -> None:
 def test_analysis_report_includes_log_fusion_explanation(tmp_path) -> None:
     scores = score_candidates([1, 0], {"E001": [1, 0], "E002": [0, 0]})
     fusion = (
-        FusedScore("E001", 0.8, 1.2, 0.95, ("print_job ×2",), ("direct access", "print_job ×2")),
+        FusedScore("E001", 0.8, 1.2, 0.95, ("print_job \u00d72",), ("direct access", "print_job \u00d72")),
         FusedScore("E002", 0.2, 0.1, 0.05, (), ("indirect access (0.05 base weight)",)),
     )
     output = tmp_path / "fusion.docx"
@@ -68,7 +68,7 @@ def test_analysis_report_includes_log_fusion_explanation(tmp_path) -> None:
     )
     assert "Log fusion" in text
     assert "demo weights are assumptions" in text
-    assert "print_job ×2" in table_text
+    assert "print_job \u00d72" in table_text
     assert "0.950000" in table_text
 
 

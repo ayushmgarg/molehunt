@@ -1,12 +1,22 @@
-# Analysis report
+# Explain: examiner report
 
-- The DOCX report records the case ID, evidence filename and SHA-256, observed-slot count, and generation time.
-- It includes each candidate's matches, null-model probability, and log10 likelihood ratio.
-- When log evidence is supplied, it adds access priors, normalized posteriors, and the factors applied.
-- The report labels demo log multipliers as assumptions rather than calibrated probabilities.
-- For `m` matches among `n` observed slots, `LR = (1-e)^m e^(n-m) / 0.5^n`.
-- Erasures do not contribute to `n` or `m`.
-- Example: 3 matches in 3 slots with `e=0.15` gives `LR = 0.85^3 / 0.5^3`.
-- The report labels the ranking as copy attribution and explains that it does not identify the person who disclosed the file.
-- Decision thresholds remain unset until an independent benchmark estimates their error rate.
-- Reports can be generated in DOCX or PDF; casebook-linked findings are future work.
+`report.py` builds a neutral list of sections; `report_render.py` writes the
+same sections to DOCX (python-docx) or PDF (reportlab), so both formats agree.
+
+Section 8 skeleton, in order:
+1. Case and scope: case id, examiner, UTC date, question asked.
+2. Evidence: file and SHA-256; a table with intake time and custody status.
+3. Method: channels used, LR = (1-e)^m e^(n-m) / 0.5^n, tool version, and the
+   SHA-256 of `bench/results/runs.csv` as the validation reference.
+4. Findings: per-channel observed/total, ranking, and the decision statement
+   with its verbal LR phrase.
+5. Log fusion and correlation: prior, posterior, applied factors, timeline rows.
+6. Limitations: copy vs person, erasure rate = 1 - n/L, alternative hypotheses,
+   and the false-accusation rate read from `bench/results/summary.json`.
+7. Conclusion in standard wording (attribute / cannot distinguish / none).
+8. Appendix: slot matrix (o match, x mismatch, - erasure) and a hex excerpt.
+
+Missing inputs are written as "not recorded" or "unknown", never guessed.
+
+Worked example: 60 of 80 slots observed gives "Erasure rate: 25.0%". With no
+benchmark on file the report says "error rate unknown".

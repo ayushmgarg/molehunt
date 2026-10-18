@@ -30,3 +30,12 @@
 ## Timeline
 
 - Naive ISO timestamps in synthetic event CSVs are interpreted as UTC. Timezone-aware values are converted to UTC before sorting and display.
+
+## Allocator slots (C1, C2, C3b)
+
+- Masters opt in through YAML front matter `auto_slots: {zw, nbsp, hom}` with explicit counts. Masters without front matter keep the previous slot map, so older issued copies stay decodable.
+- C2 auto slots use NBSP vs narrow NBSP instead of NBSP vs space, and C3b uses Cyrillic vs Greek instead of Latin vs look-alike. Normalising attacks then produce erasures rather than forged bit-0 values (rule 13). Authored `{{pun:...}}` and `{{spc:...}}` slots keep their plain variant as bit 0.
+
+## Alignment skeleton
+
+- Both master and suspect are skeletonised (Cf removed, look-alikes folded, word variants mapped to bit 0) before `SequenceMatcher`, as SPEC 5.5 requires. Previously only the master side was canonical, and stripped copies of repetitive text could read a neighbouring paragraph's slot.

@@ -1,5 +1,6 @@
 """Tests for the initial command-line engine workflow."""
 
+import csv
 import hashlib
 import sqlite3
 from pathlib import Path
@@ -34,6 +35,27 @@ def test_init_creates_key_without_printing_secret(tmp_path: Path) -> None:
     with sqlite3.connect(db_path) as connection:
         tables = {row[0] for row in connection.execute("SELECT name FROM sqlite_master")}
     assert {"masters", "slots", "employees", "copies", "cases"} <= tables
+
+
+def test_suggest_slots_exports_reviewable_csv_without_editing_master(tmp_path: Path) -> None:
+    master = tmp_path / "master.md"
+    original = "Begin with color.\nThen organize records."
+    master.write_text(original, encoding="utf-8")
+    output = tmp_path / "suggestions" / "review.csv"
+    result = runner.invoke(
+        app,
+        ["suggest-slots", str(master), "--output", str(output), "--context-chars", "20"],
+    )
+    assert result.exit_code == 0, result.stdout
+    assert "Suggestions: 3" in result.stdout
+    assert master.read_text(encoding="utf-8") == original
+    with output.open(encoding="utf-8", newline="") as stream:
+        rows = list(csv.DictReader(stream))
+    assert [(row["channel"], row["original"], row["alternative"]) for row in rows] == [
+        ("lex", "Begin", "Start"),
+        ("spl", "color", "colour"),
+        ("spl", "organize", "organise"),
+    ]
 
 
 def test_analyze_ranks_clean_rendered_copy(tmp_path: Path) -> None:

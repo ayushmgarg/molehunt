@@ -11,6 +11,7 @@ import typer
 
 from molehunt import __version__
 from molehunt.attacks.harness import run_text_benchmark, write_benchmark
+from molehunt.channels.suggest import suggest_slots as find_slot_suggestions
 from molehunt.core.codes import generate_codewords
 from molehunt.core.keys import KEY_BYTES, load_or_create_key
 from molehunt.core.render import render_docx, render_text
@@ -79,6 +80,46 @@ def init(
     typer.echo(f"Key ready: {key_file} ({KEY_BYTES} bytes)")
     typer.echo(f"Registry ready: {db_file}")
     typer.echo(f"Custody log ready: {custody_log}")
+
+
+@app.command("suggest-slots")
+def suggest_slots_command(
+    master: Annotated[Path, typer.Argument(help="Text or Markdown master to inspect")],
+    output: Annotated[Path | None, typer.Option("--output", "-o", help="CSV proposal file")]
+    = None,
+    context_chars: Annotated[int, typer.Option("--context-chars", min=0)] = 48,
+) -> None:
+    """Export contextual lexical and spelling slot proposals for human review."""
+    try:
+        text = master.read_text(encoding="utf-8")
+        suggestions = find_slot_suggestions(text, context_chars=context_chars)
+        if output is not None:
+            output.parent.mkdir(parents=True, exist_ok=True)
+            with output.open("w", encoding="utf-8", newline="") as stream:
+                writer = csv.writer(stream)
+                writer.writerow(("line", "offset", "channel", "original", "alternative", "context"))
+                writer.writerows(
+                    (
+                        item.line, item.offset, item.channel, item.original,
+                        item.alternative, item.context,
+                    )
+                    for item in suggestions
+                )
+    except (OSError, UnicodeError, ValueError) as error:
+        typer.echo(f"Error: {error}", err=True)
+        raise typer.Exit(code=2) from error
+    if output is not None:
+        typer.echo(f"Suggestions: {len(suggestions)} ({output})")
+    elif suggestions:
+        typer.echo("Line  Offset  Channel  Original  Alternative  Context")
+        for item in suggestions:
+            typer.echo(
+                f"{item.line:>4}  {item.offset:>6}  {item.channel:<7}  "
+                f"{item.original:<12} {item.alternative:<12} {item.context}"
+            )
+        typer.echo(f"Suggestions: {len(suggestions)}; review every pair before editing the master.")
+    else:
+        typer.echo("No curated slot suggestions found.")
 
 
 @app.command()

@@ -4,6 +4,8 @@
 printing the key contents.
 `register` parses a master, derives its keyed slot map, and stores the master digest and
 slot anchors in SQLite. Reusing an ID fails instead of replacing that record.
+`suggest-slots` exports curated lexical and spelling proposals with source offsets and
+context; it never changes the source file, and each pair needs human approval.
 `issue` accepts a registered master ID or path, checks the stored SHA-256, then derives
 a codeword from the key and synthetic employee ID. It renders a text, Markdown, or DOCX
 copy and records its hash, path, format, master, and synthetic employee in SQLite.

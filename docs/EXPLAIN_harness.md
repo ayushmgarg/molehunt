@@ -1,11 +1,21 @@
-# Attack benchmark harness
+# Explain: benchmark harness
 
-- `run_text_benchmark` issues one synthetic copy per employee, applies each requested attack, then runs alignment and scoring.
-- A run is identified by attack, strength, seed, and synthetic employee ID.
-- Top-1 accuracy is the fraction of runs where the highest-scoring candidate is the known synthetic leaker.
-- Channel survival is `observed bits / eligible slots`, with erasures counted as not observed.
-- Runtime is measured around rendering, attack, extraction, and candidate scoring.
-- Example: 8 correct top ranks across 10 runs gives top-1 accuracy `8/10 = 0.8`.
-- `write_benchmark` writes per-run and per-channel CSV data plus accuracy and survival plots.
-- Artifacts describe only the supplied template, roster, attacks, strengths, and seeds.
-- Thresholds and attack realism require broader empirical calibration; plots alone do not establish robustness.
+One run: render the leaker's copy, apply an attack (or chain), analyse it against
+all N candidates, apply the decision rule. Recorded: n observed slots, matches m,
+leaker log10 LR, top-1 correct, outcome, false accusation (an innocent was
+attributed), best innocent log10 LR, per-channel survival, runtime.
+
+Protocol (`run_protocol`, SPEC Section 6): masters x seeds are independent units
+run in worker processes. Each unit uses the key `SHA-256("molehunt benchmark key
+v1:<seed>")`, 50 synthetic employees, 20 leakers drawn with a seeded RNG, every
+attack (A1, A2, A2b, A3-A11) at strengths 0.15/0.5/1.0, and chains
+A1+A2+A3+A4, then + A8 keeping 25/50/75 percent, then + A7 at 0.15.
+
+Counts: 3 masters x 10 seeds x 20 leakers x (12 x 3 + 5) = 24,600 runs.
+
+Top-1 accuracy = correct top ranks / runs. False-accusation rate = runs where the
+decision attributes an innocent / runs. Survival = observed / total slots per channel.
+
+Worked example: 8 correct top ranks in 10 runs gives 0.8; if 1 of 10,000 runs
+attributes an innocent the measured false-accusation rate is 0.0001.
+Numbers describe only these synthetic masters, attacks, and seeds.

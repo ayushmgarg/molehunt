@@ -10,7 +10,7 @@ Section 8 skeleton, in order:
    SHA-256 of `bench/results/runs.csv` as the validation reference.
 4. Findings: per-channel observed/total, ranking, and the decision statement
    with its verbal LR phrase.
-5. Log fusion and correlation: prior, posterior, applied factors, timeline rows.
+5. Log fusion (correlation): prior, posterior, applied factors, timeline rows.
 6. Limitations: copy vs person, erasure rate = 1 - n/L, alternative hypotheses,
    and the false-accusation rate read from `bench/results/summary.json`.
 7. Conclusion in standard wording (attribute / cannot distinguish / none).

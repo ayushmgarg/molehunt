@@ -107,7 +107,7 @@ def test_full_report_has_every_section_eight_part(tmp_path) -> None:
     document = Document(output)
     headings = [p.text for p in document.paragraphs if p.style.name.startswith("Heading")]
     assert headings == [
-        "Case and scope", "Evidence", "Method", "Findings", "Log fusion and correlation",
+        "Case and scope", "Evidence", "Method", "Findings", "Log fusion",
         "Interpretation and limitations", "Conclusion", "Appendix",
     ]
     text = "\n".join(p.text for p in document.paragraphs)

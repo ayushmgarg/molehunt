@@ -153,7 +153,7 @@ def build_sections(data: ReportInput) -> list[Section]:
         if data.timeline:
             correlation_tables.append(ReportTable(("Time (UTC)", "Employee", "Event"), data.timeline))
         sections.append(Section(
-            "Log fusion and correlation",
+            "Log fusion",
             (("Posterior combines the fingerprint likelihood with explicit access weights and "
              "event multipliers. These demo weights are assumptions, not calibrated probabilities."),),
             tuple(correlation_tables),

@@ -22,6 +22,8 @@ CUSTOM_CONTENT_TYPE = "application/vnd.openxmlformats-officedocument.custom-prop
 CUSTOM_FMTID = "{D5CDD505-2E9C-101B-9397-08002B2CF9AE}"
 PROPERTY_NAME = "MoleHuntTag"
 _PARSER = etree.XMLParser(resolve_entities=False, no_network=True)
+# Fixed ZIP entry time so the same key and employee give byte-identical packages.
+_FIXED_DATE = (2000, 1, 1, 0, 0, 0)
 
 
 def derive_rsid(key: bytes, employee_id: str) -> str:
@@ -193,9 +195,11 @@ def embed_docx_metadata(docx_data: bytes, key: bytes, employee_id: str) -> bytes
     output = BytesIO()
     with ZipFile(output, "w", compression=ZIP_DEFLATED) as package:
         for info in infos:
-            package.writestr(info, parts.pop(info.filename))
+            fixed = ZipInfo(info.filename, date_time=_FIXED_DATE)
+            fixed.compress_type = ZIP_DEFLATED
+            package.writestr(fixed, parts.pop(info.filename))
         if "docProps/custom.xml" in parts:
-            info = ZipInfo("docProps/custom.xml", date_time=(2000, 1, 1, 0, 0, 0))
+            info = ZipInfo("docProps/custom.xml", date_time=_FIXED_DATE)
             info.compress_type = ZIP_DEFLATED
             package.writestr(info, parts.pop("docProps/custom.xml"))
     return output.getvalue()

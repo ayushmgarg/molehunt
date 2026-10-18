@@ -89,3 +89,19 @@ def test_missing_or_bad_docx_is_rejected() -> None:
         pass
     else:
         raise AssertionError("invalid DOCX should be rejected")
+
+
+def test_rendered_docx_package_is_byte_deterministic() -> None:
+    import zipfile
+    from io import BytesIO
+
+    from molehunt.core.render import render_docx
+    from molehunt.core.slots import allocate_slots
+    from molehunt.core.template import parse_template
+
+    template = parse_template("Plan to {{lex:begin|start}} the work.")
+    slots = allocate_slots(template, b"k" * 32)
+    first = render_docx(template, slots, [1], b"k" * 32, "E001")
+    with zipfile.ZipFile(BytesIO(first)) as package:
+        assert {info.date_time for info in package.infolist()} == {(2000, 1, 1, 0, 0, 0)}
+    assert first == render_docx(template, slots, [1], b"k" * 32, "E001")

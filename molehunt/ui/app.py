@@ -20,7 +20,9 @@ from molehunt.core.template import parse_template
 from molehunt.custody import verify_custody
 from molehunt.detect.align import align_to_master
 from molehunt.detect.extract import extract_variants
+from molehunt.detect.fuse import FusedScore, fuse_scores
 from molehunt.detect.ingest import IngestedEvidence, ingest
+from molehunt.detect.logs import read_fusion_logs
 from molehunt.detect.score import CandidateScore, score_candidates
 from molehunt.intake import intake_evidence
 from molehunt.report import write_analysis_report
@@ -37,6 +39,7 @@ class AnalysisBundle:
     observations: tuple[int | None, ...]
     codewords: dict[str, tuple[int, ...]]
     scores: tuple[CandidateScore, ...]
+    fused_scores: tuple[FusedScore, ...] | None
 
 
 def _analyze_inputs(
@@ -44,6 +47,7 @@ def _analyze_inputs(
     master_path: Path,
     roster_path: Path,
     key_path: Path,
+    logs_path: Path | None = None,
 ) -> AnalysisBundle:
     """Read and score one evidence item without touching any Qt widgets."""
     key = _key(key_path)
@@ -63,7 +67,11 @@ def _analyze_inputs(
         for employee_id, bits in generate_codewords(key, employee_ids, len(slots)).items()
     }
     scores = score_candidates(observations, codewords)
-    return AnalysisBundle(evidence, len(slots), observations, codewords, scores)
+    fused_scores = None
+    if logs_path is not None:
+        log_evidence = read_fusion_logs(logs_path, set(employee_ids))
+        fused_scores = fuse_scores(scores, log_evidence.access, log_evidence.events)
+    return AnalysisBundle(evidence, len(slots), observations, codewords, scores, fused_scores)
 
 
 def _benchmark_inputs(
@@ -201,8 +209,10 @@ class MoleHuntWindow(QMainWindow):
             master = self._field_path("analysis", "master")
             roster = self._field_path("analysis", "employees")
             key = self._field_path("analysis", "key")
+            logs_text = self.fields["analysis"]["logs"].text().strip()
+            logs = Path(logs_text) if logs_text else None
             self._start_task(
-                lambda: _analyze_inputs(evidence, master, roster, key),
+                lambda: _analyze_inputs(evidence, master, roster, key, logs),
                 self._render_analysis,
             )
         except (OSError, UnicodeError, ValueError) as error:
@@ -240,6 +250,18 @@ class MoleHuntWindow(QMainWindow):
                 item.setToolTip(f"Slot {index + 1}: {state}")
                 item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
                 self.slot_matrix.setItem(row_index, index + 1, item)
+        self.fusion_results.setVisible(bundle.fused_scores is not None)
+        if bundle.fused_scores is not None:
+            self.fusion_results.setRowCount(len(bundle.fused_scores))
+            for row_index, item in enumerate(bundle.fused_scores):
+                values = (
+                    item.candidate_id,
+                    f"{item.prior:.4f}",
+                    "Cannot distinguish" if item.posterior is None else f"{item.posterior:.6f}",
+                    "; ".join(item.rationale),
+                )
+                for column, value in enumerate(values):
+                    self.fusion_results.setItem(row_index, column, QTableWidgetItem(value))
         self.analysis_detail.setPlainText(
             f"SHA-256: {bundle.evidence.sha256}\nObserved slots: "
             f"{sum(bit is not None for bit in observations)} / {bundle.slot_count}\n"
@@ -264,6 +286,7 @@ class MoleHuntWindow(QMainWindow):
                 total_slots=self._analysis.slot_count,
                 scores=self.scores,
                 flip_rate=0.15,
+                fused_scores=self._analysis.fused_scores,
             )
             self.status.setText(f"Report written: {output}")
         except (OSError, ValueError, StopIteration) as error:

@@ -69,6 +69,7 @@ def build_pages(owner) -> QTabWidget:
     for key, label, default in (
         ("evidence", "Evidence", ""), ("master", "Master template", ""),
         ("employees", "Synthetic roster", ""), ("key", "Secret key", ".molehunt/master.key"),
+        ("logs", "Optional fusion CSV logs", ""),
         ("report", "Optional DOCX or PDF report", ""),
     ):
         _add_field(form, fields, key, label, default)
@@ -86,6 +87,13 @@ def build_pages(owner) -> QTabWidget:
     )
     owner.results.horizontalHeader().setStretchLastSection(True)
     analysis.layout().addWidget(owner.results)
+    owner.fusion_results = QTableWidget(0, 4)
+    owner.fusion_results.setHorizontalHeaderLabels(
+        ["Candidate", "Prior", "Posterior", "Access and event evidence"]
+    )
+    owner.fusion_results.horizontalHeader().setStretchLastSection(True)
+    owner.fusion_results.setVisible(False)
+    analysis.layout().addWidget(owner.fusion_results)
     owner.slot_matrix = QTableWidget(0, 1)
     owner.slot_matrix.setHorizontalHeaderLabels(["Candidate"])
     owner.slot_matrix.setMinimumHeight(220)

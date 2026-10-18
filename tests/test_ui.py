@@ -44,6 +44,11 @@ def test_workbench_analysis_populates_candidate_slot_matrix(tmp_path) -> None:
     )
     roster_path = tmp_path / "employees.csv"
     roster_path.write_text("id\nE001\nE002\nE003\n", encoding="utf-8")
+    logs_path = tmp_path / "logs.csv"
+    logs_path.write_text(
+        "employee_id,access_level,event\nE001,direct,print_job\nE002,indirect,\nE003,none,\n",
+        encoding="utf-8",
+    )
     key_path = tmp_path / "key"
     key_path.write_bytes(key)
 
@@ -53,6 +58,7 @@ def test_workbench_analysis_populates_candidate_slot_matrix(tmp_path) -> None:
     fields["master"].setText(str(master_path))
     fields["employees"].setText(str(roster_path))
     fields["key"].setText(str(key_path))
+    fields["logs"].setText(str(logs_path))
     window._analyze()
     assert window.status.text() == "Working…"
     assert not window.centralWidget().isEnabled()
@@ -66,6 +72,10 @@ def test_workbench_analysis_populates_candidate_slot_matrix(tmp_path) -> None:
     assert window.slot_matrix.columnCount() == 65
     assert window.slot_matrix.rowCount() == 3
     assert window.slot_matrix.item(0, 0).text() == "E002"
+    assert not window.fusion_results.isHidden()
+    assert window.fusion_results.rowCount() == 3
+    assert window.fusion_results.item(0, 0).text() == "E002"
+    assert "print_job ×2" in window.fusion_results.item(1, 3).text()
     symbols = {
         window.slot_matrix.item(0, column).text()
         for column in range(1, window.slot_matrix.columnCount())

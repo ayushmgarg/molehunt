@@ -15,6 +15,7 @@ from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib.units import inch
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
+from molehunt.detect.fuse import FusedScore
 from molehunt.detect.score import CandidateScore
 
 
@@ -28,6 +29,7 @@ def write_analysis_report(
     scores: Sequence[CandidateScore],
     flip_rate: float,
     case_id: str = "Not provided",
+    fused_scores: Sequence[FusedScore] | None = None,
 ) -> Path:
     """Create a DOCX report; likelihood ratio uses a binomial null and flip model."""
     if len(evidence_sha256) != 64 or any(
@@ -38,6 +40,10 @@ def write_analysis_report(
         raise ValueError("observed slot count must be between zero and total slots")
     if not 0 < flip_rate < 0.5:
         raise ValueError("flip rate must be strictly between zero and 0.5")
+    if fused_scores is not None and {
+        score.candidate_id for score in scores
+    } != {score.candidate_id for score in fused_scores}:
+        raise ValueError("fusion and fingerprint rankings must contain the same candidates")
     output = Path(output_path)
     if output.suffix.casefold() not in {".docx", ".pdf"}:
         raise ValueError("analysis reports must use the .docx or .pdf extension")
@@ -52,6 +58,7 @@ def write_analysis_report(
             scores=scores,
             flip_rate=flip_rate,
             case_id=case_id,
+            fused_scores=fused_scores,
         )
         return output
 
@@ -95,6 +102,29 @@ def write_analysis_report(
         for cell, value in zip(row, values, strict=True):
             cell.text = value
 
+    if fused_scores is not None:
+        document.add_heading("Log fusion", level=1)
+        document.add_paragraph(
+            "Posterior combines the fingerprint likelihood with explicit access weights "
+            "and event multipliers. These demo weights are assumptions, not calibrated probabilities."
+        )
+        fusion_table = document.add_table(rows=1, cols=4)
+        fusion_table.style = "Light Shading Accent 1"
+        for cell, header in zip(
+            fusion_table.rows[0].cells, ("ID", "Prior", "Posterior", "Applied evidence"), strict=True
+        ):
+            cell.text = header
+        for item in fused_scores:
+            row = fusion_table.add_row().cells
+            values = (
+                item.candidate_id,
+                f"{item.prior:.4f}",
+                "Cannot distinguish" if item.posterior is None else f"{item.posterior:.6f}",
+                "; ".join(item.rationale),
+            )
+            for cell, value in zip(row, values, strict=True):
+                cell.text = value
+
     document.add_heading("Interpretation and limitations", level=1)
     document.add_paragraph(
         "This table ranks synthetic copy fingerprints. It does not identify who handled or "
@@ -117,6 +147,7 @@ def _write_pdf_report(
     scores: Sequence[CandidateScore],
     flip_rate: float,
     case_id: str,
+    fused_scores: Sequence[FusedScore] | None,
 ) -> None:
     """Render the same ranked evidence summary as a paginated PDF."""
     styles = getSampleStyleSheet()
@@ -181,6 +212,40 @@ def _write_pdf_report(
             ),
         ]
     )
+    if fused_scores is not None:
+        story.extend(
+            [
+                Spacer(1, 0.15 * inch),
+                Paragraph("Log fusion", styles["Heading2"]),
+                Paragraph(
+                    "Posterior combines fingerprint likelihood with explicit access weights "
+                    "and event multipliers; these demo weights are assumptions, not calibrated probabilities.",
+                    styles["BodyText"],
+                ),
+            ]
+        )
+        fusion_data = [["ID", "Prior", "Posterior", "Applied evidence"]]
+        fusion_data.extend(
+            [
+                escape(item.candidate_id),
+                f"{item.prior:.4f}",
+                "Cannot distinguish" if item.posterior is None else f"{item.posterior:.6f}",
+                escape("; ".join(item.rationale)),
+            ]
+            for item in fused_scores
+        )
+        fusion_table = Table(fusion_data, repeatRows=1)
+        fusion_table.setStyle(
+            TableStyle(
+                [
+                    ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#3A4048")),
+                    ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                    ("GRID", (0, 0), (-1, -1), 0.35, colors.HexColor("#808080")),
+                    ("FONTSIZE", (0, 0), (-1, -1), 8),
+                ]
+            )
+        )
+        story.append(fusion_table)
     SimpleDocTemplate(
         str(output), pagesize=letter, rightMargin=0.5 * inch, leftMargin=0.5 * inch,
         topMargin=0.55 * inch, bottomMargin=0.55 * inch,

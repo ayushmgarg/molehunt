@@ -35,9 +35,10 @@ def test_workbench_builds_engine_tabs() -> None:
     window = MoleHuntWindow()
     tabs = window.centralWidget()
     assert window.windowTitle() == "MoleHunt | Forensic Desk"
-    assert tabs.count() == 5
+    assert tabs.count() == 6
     assert [tabs.tabText(index) for index in range(tabs.count())] == [
-        "Evidence analysis", "Issue copy", "Intake and custody", "Red Team bench", "Casebook"
+        "Evidence analysis", "Issue copy", "Intake and custody", "Red Team bench",
+        "Casebook", "Evidence tools",
     ]
     window.close()
     application.processEvents()

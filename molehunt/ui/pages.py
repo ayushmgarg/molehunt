@@ -12,6 +12,7 @@ from PySide6.QtWidgets import (
     QLabel,
     QLineEdit,
     QPushButton,
+    QSpinBox,
     QTableWidget,
     QTabWidget,
     QTextEdit,
@@ -200,5 +201,50 @@ def build_pages(owner) -> QTabWidget:
     owner.case_selector.currentIndexChanged.connect(owner._casebook_show_selected)
     owner._casebook_show_selected()
     tabs.addTab(casebook, "Casebook")
+
+    forensic, form, fields = _form_page(owner, "forensics")
+    _add_field(form, fields, "database", "SQLite registry", ".molehunt/molehunt.sqlite3")
+    _add_field(form, fields, "evidence", "Evidence file", "")
+    evidence_actions = QHBoxLayout()
+    refresh_evidence = QPushButton("Refresh evidence tree")
+    refresh_evidence.clicked.connect(owner._evidence_refresh)
+    inspect_evidence = QPushButton("Inspect selected file")
+    inspect_evidence.clicked.connect(owner._forensics_inspect)
+    evidence_actions.addWidget(refresh_evidence)
+    evidence_actions.addWidget(inspect_evidence)
+    form.addRow("", evidence_actions)
+    owner.evidence_tree = QTableWidget(0, 6)
+    owner.evidence_tree.setHorizontalHeaderLabels(
+        ["Evidence ID", "Case", "SHA-256", "Intake UTC", "Original", "Working copy"]
+    )
+    owner.evidence_tree.horizontalHeader().setStretchLastSection(True)
+    owner.evidence_tree.setMaximumHeight(150)
+    owner.evidence_tree.cellClicked.connect(owner._evidence_tree_selected)
+    forensic.layout().addWidget(owner.evidence_tree)
+    offset_row = QHBoxLayout()
+    offset_row.addWidget(QLabel("Byte offset"))
+    owner.hex_offset = QSpinBox()
+    owner.hex_offset.setRange(0, 2_147_483_647)
+    owner.hex_offset.setValue(0)
+    offset_row.addWidget(owner.hex_offset)
+    offset_row.addWidget(QLabel("Select the corresponding hex byte to inspect its UTF-8 scalar."))
+    forensic.layout().addLayout(offset_row)
+    owner.hex_table = QTableWidget(0, 18)
+    owner.hex_table.setHorizontalHeaderLabels(
+        ["Offset", *(f"{index:02X}" for index in range(16)), "ASCII"]
+    )
+    owner.hex_table.horizontalHeader().setStretchLastSection(True)
+    owner.hex_table.cellClicked.connect(owner._hex_byte_selected)
+    forensic.layout().addWidget(owner.hex_table)
+    owner.byte_detail = QLabel("Select a byte to show its decoded character, if valid UTF-8.")
+    forensic.layout().addWidget(owner.byte_detail)
+    owner.invisible_table = QTableWidget(0, 6)
+    owner.invisible_table.setHorizontalHeaderLabels(
+        ["Character offset", "Code point", "Unicode name", "Category", "UTF-8 bytes", "Character"]
+    )
+    owner.invisible_table.horizontalHeader().setStretchLastSection(True)
+    forensic.layout().addWidget(QLabel("Non-printing characters in decoded text"))
+    forensic.layout().addWidget(owner.invisible_table)
+    tabs.addTab(forensic, "Evidence tools")
     tabs.setStyleSheet(_STYLE)
     return tabs

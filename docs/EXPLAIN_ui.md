@@ -13,4 +13,5 @@
 - Evidence analysis, intake, custody verification, and benchmarks run on a background thread.
 - Example: choose `data/demo/master.md`, issue E007, then analyze the resulting text copy.
 - Results label rankings as copy attribution and state that thresholds remain uncalibrated.
-- Casebook, timeline, hex/OOXML views, and keyboard-virtualized evidence panels remain in development.
+- The Evidence tools tab lists intake records, shows raw hex bytes and ASCII, maps selected UTF-8 bytes to characters, and lists non-printing characters in decoded text.
+- Timeline, OOXML views, diff overlays, and keyboard-virtualized evidence panels remain in development.

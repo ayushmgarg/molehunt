@@ -1,0 +1,12 @@
+case_id: C-05
+title: The Late Download
+brief: Several copies remain plausible. Access and print records may change the fingerprint ranking.
+objective: Fuse copy evidence with explicit synthetic log factors and state what moved the posterior.
+generator: log_fusion
+master: data/demo/master.md
+seed_offset: 505
+tools: [auto_detector, timeline]
+hints:
+  - Start with fingerprint likelihoods before applying access evidence.
+  - List every event multiplier and its documented value.
+  - A posterior based on demo weights is conditional on those assumptions.

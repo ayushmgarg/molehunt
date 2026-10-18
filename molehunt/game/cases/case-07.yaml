@@ -1,0 +1,12 @@
+case_id: C-07
+title: The Borrowed Account
+brief: A matching copy points to one account, while badge and authentication records suggest another explanation.
+objective: Separate copy-level attribution from person-level hypotheses and report the alternatives.
+generator: account_sharing
+master: data/demo/master.md
+seed_offset: 707
+tools: [timeline, auto_detector, notes, report]
+hints:
+  - A fingerprint links the leak to a copy, not necessarily to its named owner.
+  - Compare access, badge, and authentication events over the same time window.
+  - Preserve both the copy attribution and any plausible account-sharing explanation.

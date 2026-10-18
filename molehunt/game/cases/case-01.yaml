@@ -1,0 +1,12 @@
+case_id: C-01
+title: The Invisible Copy
+brief: A short internal memo appeared outside its intended team. Begin with the file itself.
+objective: Identify the fingerprinted copy and explain which hidden text evidence supports it.
+generator: invisible_copy
+master: data/demo/master.md
+seed_offset: 101
+tools: [intake, hex, invisible, notes, report]
+hints:
+  - Compare raw code points with the visible text before normalizing it.
+  - A missing marker is an erasure; it is not evidence against a candidate.
+  - State which copy matches and separate that from who disclosed it.

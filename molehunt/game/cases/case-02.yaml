@@ -1,0 +1,12 @@
+case_id: C-02
+title: The Edited Draft
+brief: A leaked draft has been revised in several places, but its wording still carries traces.
+objective: Compare the draft with the master and use surviving variation slots to rank copies.
+generator: edited_text
+master: data/demo/master.md
+seed_offset: 202
+tools: [diff, slot_matrix]
+hints:
+  - Anchor matching text around each authored variation point.
+  - Treat rewritten or absent variants as erasures.
+  - Compare the full candidate matrix before writing a conclusion.

@@ -1,0 +1,12 @@
+case_id: C-06
+title: The Shared Leak
+brief: Investigators suspect that multiple fingerprinted copies were combined before the leak.
+objective: Score the observed bits with Tardos evidence and distinguish colluders from innocent candidates.
+generator: collusion
+master: data/demo/master.md
+seed_offset: 606
+tools: [tardos]
+hints:
+  - Slots where colluders disagree carry more information than unanimous slots.
+  - Erasures contribute zero to a Tardos score.
+  - Calibrate the threshold with seeded simulations before making accusations.

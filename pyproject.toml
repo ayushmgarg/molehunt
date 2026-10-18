@@ -33,6 +33,9 @@ molehunt = "molehunt.cli:main"
 [tool.setuptools.packages.find]
 include = ["molehunt*"]
 
+[tool.setuptools.package-data]
+"molehunt.game.cases" = ["*.yaml"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-ra"

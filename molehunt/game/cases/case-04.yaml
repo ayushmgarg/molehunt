@@ -1,0 +1,12 @@
+case_id: C-04
+title: The Repacked File
+brief: The visible wording is clean, but the original office document may retain structural traces.
+objective: Inspect OOXML metadata and compare its copy-level clues with the registered records.
+generator: ooxml_metadata
+master: data/demo/master.md
+seed_offset: 404
+tools: [ooxml]
+hints:
+  - Inspect settings.xml and run properties, not only core document properties.
+  - Repacking or saving can change metadata; record what is present and what is absent.
+  - Metadata can link a file to a copy without identifying the person who sent it.

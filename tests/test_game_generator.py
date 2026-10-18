@@ -1,5 +1,6 @@
 """Tests for seeded synthetic case evidence generation."""
 
+import csv
 import json
 from pathlib import Path
 
@@ -46,6 +47,15 @@ def test_all_seven_cases_generate_public_evidence_and_separate_truth(tmp_path: P
     assert metadata.printer_id == truth["printer_id"]
     assert metadata.printed_on.isoformat() == truth["printed_on"]
     assert metadata.minute_of_day == truth["minute_of_day"]
+    timeline_path = next(path for path in printed.auxiliary_paths if path.name == "print_events.csv")
+    with timeline_path.open(encoding="utf-8", newline="") as stream:
+        timeline_rows = list(csv.DictReader(stream))
+    assert {"timestamp", "employee_id", "event", "device_id", "printer_id"} == set(
+        timeline_rows[0]
+    )
+    exact_print = next(row for row in timeline_rows if row["event"] == "print_job")
+    assert exact_print["timestamp"].startswith(truth["printed_on"])
+    assert int(exact_print["printer_id"]) == truth["printer_id"]
 
     collusion = instances[5]
     truth = json.loads(collusion.ground_truth_path.read_text(encoding="utf-8"))

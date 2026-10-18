@@ -7,7 +7,7 @@ import hashlib
 import json
 import random
 from dataclasses import dataclass
-from datetime import date, timedelta
+from datetime import UTC, date, datetime, time, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -51,6 +51,39 @@ def _write_logs(path: Path, rows: list[tuple[str, str, str]]) -> None:
         writer = csv.writer(stream)
         writer.writerow(["employee_id", "access_level", "event"])
         writer.writerows(rows)
+
+
+def _write_print_timeline(
+    path: Path,
+    *,
+    employee_id: str,
+    printer_id: int,
+    printed_on: date,
+    minute_of_day: int,
+) -> None:
+    """Write deterministic synthetic events around the encoded print time."""
+    midnight = datetime.combine(printed_on, time.min, tzinfo=UTC)
+    printed_at = midnight + timedelta(minutes=minute_of_day)
+    device_id = f"PRN-{printer_id:03d}"
+    events = (
+        (printed_at - timedelta(minutes=45), "badge_entry"),
+        (printed_at - timedelta(minutes=18), "document_open"),
+        (printed_at, "print_job"),
+        (printed_at + timedelta(minutes=12), "badge_exit"),
+    )
+    with path.open("w", encoding="utf-8", newline="") as stream:
+        writer = csv.writer(stream)
+        writer.writerow(["timestamp", "employee_id", "event", "device_id", "printer_id"])
+        writer.writerows(
+            (
+                timestamp.isoformat(timespec="seconds"),
+                employee_id,
+                event,
+                device_id,
+                printer_id,
+            )
+            for timestamp, event in events
+        )
 
 
 def _render_with_zero_width(
@@ -117,7 +150,13 @@ def _single_copy(
         page = Image.new("RGB", (1024, 1400), "white")
         render_dot_grid(page, metadata, origin=(16, 16), cell_size=6, radius=1).save(evidence)
         log_path = public_dir / "print_events.csv"
-        _write_logs(log_path, [(employee_id, "direct", "print_job")])
+        _write_print_timeline(
+            log_path,
+            employee_id=employee_id,
+            printer_id=printer_id,
+            printed_on=printed_on,
+            minute_of_day=minute,
+        )
         auxiliary = (log_path,)
         truth = {
             "copy_owner": employee_id,

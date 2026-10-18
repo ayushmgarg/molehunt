@@ -6,5 +6,5 @@ top-1 under A4 (all strengths),>= 1.0,1.0000,1800,PASS
 top-1 under A5 (all strengths),>= 1.0,1.0000,1800,PASS
 top-1 under A1-A4 + 50% truncation,>= 0.95,1.0000,600,PASS
 top-1 under A7 at 0.15,>= 0.80,1.0000,600,PASS
-false accusation rate (decision rule),<= 0.001,0.0002,25200,PASS
+false accusation rate (decision rule),<= 0.001,0.0001,25200,PASS
 collusion k=2 both identified (Tardos),>= 0.80,0.9556,90,PASS

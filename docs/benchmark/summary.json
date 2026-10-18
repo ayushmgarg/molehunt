@@ -1,10 +1,10 @@
 {
   "runs": 25200,
-  "top1_accuracy": 0.96853,
-  "false_accusation_rate": 0.000238,
+  "top1_accuracy": 0.97516,
+  "false_accusation_rate": 7.9e-05,
   "outcomes": {
-    "attribute": 24006,
-    "no attribution": 1194
+    "attribute": 24007,
+    "no attribution": 1193
   },
   "collusion_trials": 180,
   "collusion_innocents_accused": 0,

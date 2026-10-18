@@ -1,5 +1,6 @@
 """Smoke tests for the native PySide6 workbench shell."""
 
+import json
 import os
 import sqlite3
 
@@ -12,6 +13,8 @@ from molehunt.core.codes import generate_codeword
 from molehunt.core.render import render_text
 from molehunt.core.slots import allocate_slots
 from molehunt.core.template import parse_template
+from molehunt.game.generator import generate_case
+from molehunt.game.progression import initialize_casebook, start_case
 from molehunt.ui.app import MoleHuntWindow
 
 
@@ -33,9 +36,9 @@ def test_workbench_builds_engine_tabs() -> None:
     window = MoleHuntWindow()
     tabs = window.centralWidget()
     assert window.windowTitle() == "MoleHunt | Forensic Desk"
-    assert tabs.count() == 4
+    assert tabs.count() == 5
     assert [tabs.tabText(index) for index in range(tabs.count())] == [
-        "Evidence analysis", "Issue copy", "Intake and custody", "Red Team bench"
+        "Evidence analysis", "Issue copy", "Intake and custody", "Red Team bench", "Casebook"
     ]
     window.close()
     application.processEvents()
@@ -146,5 +149,43 @@ def test_workbench_registers_and_issues_through_sqlite_registry(tmp_path) -> Non
         ).fetchone()
     assert evidence[0] == "CASE-01"
     assert custody == ("intake", evidence[1])
+    window.close()
+    application.processEvents()
+
+
+def test_casebook_ui_generates_and_grades_seeded_case(tmp_path) -> None:
+    application = QApplication.instance() or QApplication([])
+    window = MoleHuntWindow()
+    fields = window.fields["casebook"]
+    fields["player"].setText("player-test")
+    fields["database"].setText(str(tmp_path / "registry.sqlite3"))
+    fields["output_root"].setText(str(tmp_path / "cases"))
+    window._casebook_refresh()
+    window.case_selector.setCurrentIndex(window.case_selector.findData("C-02"))
+    window._casebook_start()
+    assert "locked" in window.status.text()
+
+    window.case_selector.setCurrentIndex(window.case_selector.findData("C-01"))
+    definition = window.case_definitions[0]
+    database = tmp_path / "registry.sqlite3"
+    initialize_casebook(database, "player-test", window.case_definitions)
+    start_case(database, "player-test", "C-01", window.case_definitions)
+    instance = generate_case(
+        definition,
+        tmp_path / "cases" / "player-test" / "C-01" / "seed-0",
+        seed=0,
+        master_path="data/demo/master.md",
+    )
+    window._casebook_case_ready(instance)
+    assert window.case_instance is not None
+    assert window.case_instance.evidence_path.is_file()
+    truth = json.loads(
+        window.case_instance.ground_truth_path.read_text(encoding="utf-8")
+    )
+    fields["answer"].setText(truth["copy_owner"])
+    window._casebook_submit()
+    assert window.status.text().startswith("Correct:")
+    assert window.case_progress["C-01"].status == "complete"
+    assert window.case_progress["C-02"].status == "available"
     window.close()
     application.processEvents()

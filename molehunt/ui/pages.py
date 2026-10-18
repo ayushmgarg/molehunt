@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
+    QComboBox,
+    QDoubleSpinBox,
     QFileDialog,
     QFormLayout,
     QHBoxLayout,
@@ -37,13 +39,21 @@ def _add_field(form: QFormLayout, fields: dict[str, QLineEdit], key: str, label:
     layout.setContentsMargins(0, 0, 0, 0)
     layout.addWidget(field, 1)
     browse = QPushButton("Browse")
-    browse.clicked.connect(lambda: _browse(field, key in {"output", "report", "database"}))
+    browse.clicked.connect(
+        lambda: _browse(
+            field,
+            key in {"output", "report", "database"},
+            directory=key == "output_root",
+        )
+    )
     layout.addWidget(browse)
     form.addRow(label, row)
 
 
-def _browse(field: QLineEdit, save: bool = False) -> None:
-    if save:
+def _browse(field: QLineEdit, save: bool = False, *, directory: bool = False) -> None:
+    if directory:
+        path = QFileDialog.getExistingDirectory(None, "Choose case output folder")
+    elif save:
         path, _ = QFileDialog.getSaveFileName(None, "Choose output")
     else:
         path, _ = QFileDialog.getOpenFileName(None, "Choose file")
@@ -147,5 +157,48 @@ def build_pages(owner) -> QTabWidget:
         elif name == "bench":
             page.layout().addWidget(QLabel("Seeded transforms; output includes CSV and PNG plots."))
         tabs.addTab(page, title)
+
+    casebook, case_form, case_fields = _form_page(owner, "casebook")
+    case_fields["player"] = QLineEdit("player-01")
+    case_form.addRow("Synthetic player ID", case_fields["player"])
+    _add_field(case_form, case_fields, "database", "SQLite registry", ".molehunt/molehunt.sqlite3")
+    _add_field(case_form, case_fields, "output_root", "Generated cases folder", ".molehunt/cases")
+    owner.case_selector = QComboBox()
+    for definition in owner.case_definitions:
+        owner.case_selector.addItem(f"{definition.case_id} · {definition.title}", definition.case_id)
+    case_form.addRow("Case", owner.case_selector)
+    case_fields["seed"] = QLineEdit("0")
+    case_form.addRow("Base seed", case_fields["seed"])
+    case_buttons = QHBoxLayout()
+    for label, callback in (
+        ("Refresh progress", owner._casebook_refresh),
+        ("Start / generate", owner._casebook_start),
+        ("Use next hint", owner._casebook_hint),
+    ):
+        button = QPushButton(label)
+        button.clicked.connect(callback)
+        case_buttons.addWidget(button)
+    case_form.addRow("", case_buttons)
+    owner.case_details = QTextEdit()
+    owner.case_details.setReadOnly(True)
+    owner.case_details.setMinimumHeight(170)
+    casebook.layout().addWidget(owner.case_details)
+    answer_row = QHBoxLayout()
+    case_fields["answer"] = QLineEdit()
+    case_fields["answer"].setPlaceholderText("Candidate ID, printer ID, or comma-separated colluders")
+    answer_row.addWidget(case_fields["answer"], 1)
+    owner.case_confidence = QDoubleSpinBox()
+    owner.case_confidence.setRange(0.0, 1.0)
+    owner.case_confidence.setSingleStep(0.05)
+    owner.case_confidence.setValue(0.8)
+    owner.case_confidence.setPrefix("Confidence ")
+    answer_row.addWidget(owner.case_confidence)
+    submit = QPushButton("Submit answer")
+    submit.clicked.connect(owner._casebook_submit)
+    answer_row.addWidget(submit)
+    casebook.layout().addLayout(answer_row)
+    owner.case_selector.currentIndexChanged.connect(owner._casebook_show_selected)
+    owner._casebook_show_selected()
+    tabs.addTab(casebook, "Casebook")
     tabs.setStyleSheet(_STYLE)
     return tabs

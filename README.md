@@ -12,7 +12,7 @@ uv sync
 uv run molehunt --help
 ```
 
-Open the current native desktop workbench with `uv run molehunt serve`. It includes copy issuance, analysis, intake/custody, and a seeded Red Team bench. Seven answer-free case definitions, deterministic evidence generation, and SQLite progression are in place; the player-facing casebook screen and several advanced forensic views remain in development. See `SPEC.md` and `docs/DESIGN.md` for the full target.
+Open the current native desktop workbench with `uv run molehunt serve`. It includes copy issuance, analysis, intake/custody, a seeded Red Team bench, and a seven-case Casebook tab with generated evidence, hints, confidence scoring, and progression. Several advanced forensic views remain in development. See `SPEC.md` and `docs/DESIGN.md` for the full target.
 
 ## Current engine workflow
 

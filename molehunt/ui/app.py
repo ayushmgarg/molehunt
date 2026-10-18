@@ -5,6 +5,7 @@ from __future__ import annotations
 import csv
 from pathlib import Path
 
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QApplication, QLabel, QLineEdit, QMainWindow, QTableWidgetItem
 
 from molehunt.attacks.harness import run_text_benchmark, write_benchmark
@@ -80,6 +81,11 @@ class MoleHuntWindow(QMainWindow):
             codewords = generate_codewords(key, roster, len(slots))
             self.scores = score_candidates(observations, codewords)
             self.results.setRowCount(len(self.scores))
+            self.slot_matrix.setColumnCount(len(observations) + 1)
+            self.slot_matrix.setHorizontalHeaderLabels(
+                ["Candidate", *(f"{index + 1:02}" for index in range(len(observations)))]
+            )
+            self.slot_matrix.setRowCount(len(self.scores))
             for row_index, score in enumerate(self.scores):
                 values = (
                     score.candidate_id, str(score.matches), str(score.observed_slots),
@@ -88,6 +94,19 @@ class MoleHuntWindow(QMainWindow):
                 )
                 for column, value in enumerate(values):
                     self.results.setItem(row_index, column, QTableWidgetItem(value))
+                self.slot_matrix.setItem(row_index, 0, QTableWidgetItem(score.candidate_id))
+                for index, expected in enumerate(codewords[score.candidate_id]):
+                    observed = observations[index]
+                    symbol = "—" if observed is None else "○" if observed == expected else "×"
+                    item = QTableWidgetItem(symbol)
+                    state = (
+                        "erasure" if observed is None
+                        else "match" if observed == expected
+                        else "mismatch"
+                    )
+                    item.setToolTip(f"Slot {index + 1}: {state}")
+                    item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+                    self.slot_matrix.setItem(row_index, index + 1, item)
             self.analysis_detail.setPlainText(
                 f"SHA-256: {evidence_record.sha256}\nObserved slots: "
                 f"{sum(bit is not None for bit in observations)} / {len(slots)}\n"

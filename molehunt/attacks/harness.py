@@ -10,7 +10,8 @@ A4/A6-style normalisation can forge a bit 0 instead of erasing), runtime.
 Protocol (`run_protocol`): for each master and seed, a key derived from the seed,
 L = keyed slots, 20 leakers drawn from 50 synthetic employees, every single attack
 at each strength, plus the chains A1+A2+A3+A4, then + A8 keeping 25/50/75 percent,
-then + A7 at 0.15. Collusion runs use Tardos codes (attacks/collusion_bench.py).
+then + A7 at 0.15, and the hardest case: full scrub (A5, A2b, A4) then
+A6 dictionary canonicalisation. Collusion runs use Tardos codes (attacks/collusion_bench.py).
 Units (master, seed) run in parallel processes; each unit is fully seeded.
 """
 
@@ -42,6 +43,7 @@ CHAINS: dict[str, tuple[tuple[str, float], ...]] = {
     "A1-A4+A8@0.5": (*CORE, ("A8", 0.5)),
     "A1-A4+A8@0.75": (*CORE, ("A8", 0.75)),
     "A1-A4+A8@0.5+A7@0.15": (*CORE, ("A8", 0.5), ("A7", 0.15)),
+    "scrub+A6 (hardest)": (("A5", 1.0), ("A2b", 1.0), ("A4", 1.0), ("A6", 1.0)),
 }
 
 

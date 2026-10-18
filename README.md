@@ -21,7 +21,7 @@ Try the current workflow with the bundled synthetic master and roster. Create a 
 ```powershell
 uv run molehunt init
 uv run molehunt issue E007 --master data/demo/master.md --output data/demo/issued/E007.txt
-uv run molehunt analyze data/demo/issued/E007.txt --master data/demo/master.md --employees data/demo/employees.csv
+uv run molehunt analyze data/demo/issued/E007.txt --master data/demo/master.md --employees data/demo/employees.csv --report reports/generated/E007.docx
 uv run molehunt bench --master data/demo/master.md --employees data/demo/employees.csv --attacks A1,A3,A8 --strengths 0,0.5,1 --seeds 0,1
 ```
 

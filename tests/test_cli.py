@@ -37,6 +37,7 @@ def test_analyze_ranks_clean_rendered_copy(tmp_path: Path) -> None:
     template = parse_template(master_path.read_text(encoding="utf-8"))
     slots = allocate_slots(template, key)
     leak_path = tmp_path / "leak.txt"
+    report_path = tmp_path / "analysis.docx"
     leak_path.write_text(
         render_text(template, slots, generate_codeword(key, "E007", len(slots))),
         encoding="utf-8",
@@ -53,6 +54,8 @@ def test_analyze_ranks_clean_rendered_copy(tmp_path: Path) -> None:
             str(roster_path),
             "--key-file",
             str(key_path),
+            "--report",
+            str(report_path),
         ],
     )
     assert result.exit_code == 0, result.stdout
@@ -60,6 +63,8 @@ def test_analyze_ranks_clean_rendered_copy(tmp_path: Path) -> None:
     assert "SHA-256" in result.stdout
     candidate_rows = [line.split()[0] for line in result.stdout.splitlines() if line.startswith("E0")]
     assert candidate_rows[0] == "E007"
+    assert report_path.is_file()
+    assert str(report_path) in result.stdout
 
 
 def test_issue_creates_copy_that_analyze_identifies(tmp_path: Path) -> None:

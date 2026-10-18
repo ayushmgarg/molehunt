@@ -19,6 +19,7 @@ from molehunt.detect.extract import extract_variants
 from molehunt.detect.ingest import ingest
 from molehunt.detect.score import score_candidates
 from molehunt.intake import intake_evidence
+from molehunt.report import write_analysis_report
 
 app = typer.Typer(
     name="molehunt",
@@ -108,6 +109,10 @@ def analyze(
     employees: Annotated[Path, typer.Option("--employees", help="Synthetic roster CSV with id column")],
     key_file: Annotated[Path, typer.Option("--key-file")] = Path(".molehunt/master.key"),
     flip_rate: Annotated[float, typer.Option("--flip-rate", min=0.000001, max=0.499999)] = 0.15,
+    report: Annotated[Path | None, typer.Option("--report", help="Optional DOCX report path")]
+    = None,
+    case_id: Annotated[str, typer.Option("--case-id", help="Case ID for the report")]
+    = "Not provided",
 ) -> None:
     """Rank synthetic copy candidates for one evidence file."""
     try:
@@ -127,6 +132,18 @@ def analyze(
         by_index = {item.slot_index: item.bit for item in extracted}
         observations = [by_index[index] for index in range(len(slots))]
         scores = score_candidates(observations, codewords, flip_rate=flip_rate)
+        report_path = None
+        if report is not None:
+            report_path = write_analysis_report(
+                report,
+                evidence_name=evidence.name,
+                evidence_sha256=evidence_record.sha256,
+                observed_slots=sum(bit is not None for bit in observations),
+                total_slots=len(slots),
+                scores=scores,
+                flip_rate=flip_rate,
+                case_id=case_id,
+            )
     except (OSError, UnicodeError, ValueError) as error:
         typer.echo(f"Error: {error}", err=True)
         raise typer.Exit(code=2) from error
@@ -143,6 +160,8 @@ def analyze(
         typer.echo("Finding: cannot distinguish; no slots were observed.")
     else:
         typer.echo("Finding: ranked candidates only; decision threshold needs benchmark calibration.")
+    if report_path is not None:
+        typer.echo(f"Report: {report_path}")
 
 
 @app.command()

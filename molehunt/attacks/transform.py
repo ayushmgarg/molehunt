@@ -72,11 +72,7 @@ def attack_text(
             for character in text
         )
     if attack_id == "A3":
-        return re.sub(
-            r"\s+",
-            lambda match: " " if rng.random() < strength else match.group(0),
-            text,
-        ).strip()
+        return _collapse_spaces(text, strength, rng)
     if attack_id == "A4":
         return "".join(
             _PUNCTUATION.get(character, character)
@@ -96,11 +92,7 @@ def attack_text(
             for character in plain
             if not (unicodedata.category(character) == "Cf" and rng.random() < strength)
         )
-        return re.sub(
-            r"\s+",
-            lambda match: " " if rng.random() < strength else match.group(0),
-            plain,
-        ).strip()
+        return _collapse_spaces(plain, strength, rng)
     if attack_id == "A6":
         result = text
         for zero, one in variants:
@@ -142,22 +134,50 @@ def attack_text(
         paragraphs[:count] = selected
         return "\n\n".join(paragraphs)
     if attack_id == "A10":
-        def inject(match: re.Match[str]) -> str:
-            word = match.group(0)
-            output = []
-            for character in word:
-                if rng.random() < strength:
-                    alphabet = string.ascii_uppercase if character.isupper() else string.ascii_lowercase
-                    choices = alphabet.replace(character, "")
-                    output.append(rng.choice(choices))
-                else:
-                    output.append(character)
-            return "".join(output)
-
-        return re.sub(r"[A-Za-z]+", inject, text)
+        return _flip_noise(text, strength, rng, variants)
     if attack_id == "A11":
         return _ocr_model(text, strength, rng)
     raise ValueError(f"unknown text attack: {attack_id}")
+
+
+def _collapse_spaces(text: str, strength: float, rng: random.Random) -> str:
+    """Collapse whitespace runs to one space; a run with a blank line stays a paragraph break."""
+
+    def collapse(match: re.Match[str]) -> str:
+        if rng.random() >= strength:
+            return match.group(0)
+        return "\n\n" if match.group(0).count("\n") >= 2 else " "
+
+    return re.sub(r"\s+", collapse, text).strip()
+
+
+def _flip_noise(
+    text: str, strength: float, rng: random.Random, variants: Sequence[tuple[str, str]]
+) -> str:
+    """A10: swap variant words for their partner and toggle single/double spaces."""
+    pairs = {}
+    for zero, one in variants or [(item.zero, item.one) for item in SYNONYM_SUGGESTIONS]:
+        if zero and one and zero.replace(" ", "").isalnum() and one.replace(" ", "").isalnum():
+            pairs[zero.casefold()], pairs[one.casefold()] = one, zero
+    if pairs:
+        pattern = re.compile(
+            r"(?<!\w)(" + "|".join(re.escape(word) for word in sorted(pairs, key=len, reverse=True))
+            + r")(?!\w)",
+            re.IGNORECASE,
+        )
+        text = pattern.sub(
+            lambda match: _case_like(match.group(0), pairs[match.group(0).casefold()])
+            if rng.random() < strength
+            else match.group(0),
+            text,
+        )
+    return re.sub(
+        r"(?<=\S)( {1,2})(?=\S)",
+        lambda match: (" " if len(match.group(1)) == 2 else "  ")
+        if rng.random() < strength
+        else match.group(1),
+        text,
+    )
 
 
 OCR_CHAR_ERROR = 0.02
@@ -174,7 +194,7 @@ def _ocr_model(text: str, strength: float, rng: random.Random) -> str:
         for character in confusable_skeleton(unicodedata.normalize("NFKC", text))
         if unicodedata.category(character) != "Cf"
     )
-    plain = re.sub(r"\s+", " ", plain).strip()
+    plain = _collapse_spaces(plain, 1.0, rng)
     output = []
     for character in plain:
         if character.isalpha() and rng.random() < OCR_CHAR_ERROR * strength:

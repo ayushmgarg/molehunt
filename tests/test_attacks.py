@@ -94,5 +94,19 @@ def test_attack_chain_applies_steps_in_order_with_derived_seeds() -> None:
 
     text = "Begin\u200b \u201cthe\u201d   plan.\n\nSecond part.\n\nThird part."
     chained = attack_chain(text, ("A1", "A3", "A4"), strength=1.0, seed=2)
-    assert chained == 'Begin "the" plan. Second part. Third part.'
+    assert chained == 'Begin "the" plan.\n\nSecond part.\n\nThird part.'
     assert chained == attack_chain(text, ("A1", "A3", "A4"), strength=1.0, seed=2)
+
+
+def test_a3_keeps_paragraph_breaks_so_later_truncation_still_bites() -> None:
+    text = "One  a.\n\nTwo\u00a0b.\n\nThree c.\n\nFour d."
+    assert attack_text(text, "A3", strength=1) == "One a.\n\nTwo b.\n\nThree c.\n\nFour d."
+    assert attack_text(attack_text(text, "A3"), "A8", strength=0.5) == "One a.\n\nTwo b."
+
+
+def test_a10_flips_variant_words_and_spacing() -> None:
+    noisy = attack_text(
+        "Begin now.  Then check it.", "A10", strength=1, seed=0,
+        variants=[("begin", "start"), ("check", "verify")],
+    )
+    assert noisy == "Start  now. Then  verify  it."

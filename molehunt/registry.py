@@ -191,3 +191,42 @@ def record_copy(
             ),
         )
     return copy_id
+
+
+def record_evidence(
+    database: str | Path,
+    case_id: str,
+    original_path: str | Path,
+    working_copy_path: str | Path,
+    sha256: str,
+) -> str:
+    """Store evidence identity, immutable source location, and working-copy path."""
+    if not case_id.strip() or len(sha256) != 64:
+        raise ValueError("case ID and a 64-character SHA-256 are required")
+    evidence_id = str(uuid.uuid4())
+    with _connect(database) as connection:
+        connection.execute(
+            "INSERT INTO evidence(id, case_id, path, sha256, intake_ts, working_copy_path) "
+            "VALUES (?, ?, ?, ?, ?, ?)",
+            (
+                evidence_id, case_id.strip(), str(Path(original_path).resolve()), sha256,
+                datetime.now(UTC).isoformat(timespec="seconds"),
+                str(Path(working_copy_path).resolve()),
+            ),
+        )
+    return evidence_id
+
+
+def record_custody_entry(database: str | Path, entry: dict[str, object]) -> None:
+    """Mirror a verified JSONL custody event into the SQLite registry."""
+    required = (
+        "seq", "ts", "actor", "action", "object_sha256", "details", "prev_hash", "entry_hash"
+    )
+    if any(field not in entry for field in required):
+        raise ValueError("custody entry is missing required chain fields")
+    with _connect(database) as connection:
+        connection.execute(
+            "INSERT INTO custody_log(seq, ts, actor, action, object_sha256, details, "
+            "prev_hash, entry_hash) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            tuple(entry[field] for field in required),
+        )

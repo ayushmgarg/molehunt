@@ -13,6 +13,8 @@ from molehunt.registry import (
     get_master_by_path,
     initialize_database,
     record_copy,
+    record_custody_entry,
+    record_evidence,
     register_master,
 )
 
@@ -76,3 +78,40 @@ def test_master_registration_rolls_back_on_duplicate_id(tmp_path) -> None:
     with sqlite3.connect(database) as connection:
         assert connection.execute("SELECT COUNT(*) FROM masters").fetchone()[0] == 1
         assert connection.execute("SELECT COUNT(*) FROM slots").fetchone()[0] == 1
+
+
+def test_evidence_and_custody_metadata_are_persisted(tmp_path) -> None:
+    database = initialize_database(tmp_path / "registry.sqlite3")
+    original = tmp_path / "original.txt"
+    working = tmp_path / "working.txt"
+    original.write_text("synthetic evidence", encoding="utf-8")
+    working.write_bytes(original.read_bytes())
+    digest = hashlib.sha256(original.read_bytes()).hexdigest()
+    evidence_id = record_evidence(database, "CASE-01", original, working, digest)
+    entry = {
+        "seq": 1,
+        "ts": "2026-10-18T00:00:00Z",
+        "actor": "examiner-01",
+        "action": "intake",
+        "object_sha256": digest,
+        "details": "original/original.txt",
+        "prev_hash": "0" * 64,
+        "entry_hash": "1" * 64,
+    }
+    record_custody_entry(database, entry)
+    with sqlite3.connect(database) as connection:
+        evidence = connection.execute(
+            "SELECT case_id, path, sha256, working_copy_path FROM evidence WHERE id = ?",
+            (evidence_id,),
+        ).fetchone()
+        custody = connection.execute(
+            "SELECT seq, actor, action, object_sha256, prev_hash, entry_hash FROM custody_log"
+        ).fetchone()
+    assert evidence == ("CASE-01", str(original.resolve()), digest, str(working.resolve()))
+    assert custody == (1, "examiner-01", "intake", digest, "0" * 64, "1" * 64)
+
+
+def test_custody_registry_rejects_missing_chain_fields(tmp_path) -> None:
+    database = initialize_database(tmp_path / "registry.sqlite3")
+    with pytest.raises(ValueError, match="required chain fields"):
+        record_custody_entry(database, {"seq": 1})

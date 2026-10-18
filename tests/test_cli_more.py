@@ -85,3 +85,14 @@ def test_case_report_after_custody_intake(tmp_path: Path) -> None:
     assert "copy issued to E009" in text
     assert "hash ok; chain verified (1)" in cells
     assert "Appendix" in text
+
+
+def test_redteam_cli_reports_verdict_and_leaderboard(tmp_path: Path) -> None:
+    db = tmp_path / "r.sqlite3"
+    result = runner.invoke(app, ["redteam", "--player", "ana", "--tools", "strip,collapse",
+                                 "--db-file", str(db), "--save-leak", str(tmp_path / "x.txt")])
+    assert result.exit_code == 0, result.stdout
+    assert "Utility 100.0%" in result.stdout
+    assert "Detector: attribute" in result.stdout
+    assert "1. ana" in result.stdout
+    assert (tmp_path / "x.txt").is_file()

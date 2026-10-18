@@ -98,3 +98,62 @@ def bench(
     except (OSError, UnicodeError, ValueError) as error:
         fail(error)
     _report(rows, artifacts)
+
+
+def _steps(text: str) -> list[tuple[str, float]]:
+    """Parse ``strip,truncate:0.8`` into (tool, strength) pairs (default 1.0)."""
+    steps = []
+    for item in split_list(text):
+        name, _, value = item.partition(":")
+        steps.append((name.strip(), float(value) if value else 1.0))
+    return steps
+
+
+@app.command()
+def redteam(
+    player: Annotated[str, typer.Option("--player", help="Synthetic player name")] = "mole",
+    tools: Annotated[str, typer.Option("--tools", help="e.g. strip,collapse,truncate:0.8")] = "",
+    seed: Annotated[int, typer.Option("--seed", help="Which copy you hold")] = 0,
+    master: Annotated[Path, typer.Option("--master")] = DEFAULT_MASTERS / "m1_roadmap.md",
+    dictionary: Annotated[str, typer.Option("--dictionary", help="Pairs you found: a=b,c=d")]
+    = "",
+    save_leak: Annotated[Path | None, typer.Option("--save-leak")] = None,
+    db_file: Annotated[Path, typer.Option("--db-file")] = Path(".molehunt/molehunt.sqlite3"),
+    board: Annotated[bool, typer.Option("--leaderboard", help="Only show the leaderboard")]
+    = False,
+) -> None:
+    """Red Team: scrub your copy under the 70% utility floor and try to evade."""
+    from molehunt.game.redteam import (
+        UTILITY_FLOOR,
+        apply_tools,
+        evaluate,
+        record_score,
+        redteam_leaderboard,
+        start_session,
+    )
+
+    try:
+        db_file.parent.mkdir(parents=True, exist_ok=True)
+        if not board:
+            session = start_session(master, seed=seed)
+            pairs = [tuple(pair.split("=", 1)) for pair in split_list(dictionary) if "=" in pair]
+            steps = _steps(tools)
+            text = apply_tools(session, steps, seed=seed, dictionary=pairs)
+            verdict = evaluate(session, text)
+            record_score(db_file, player, verdict, steps)
+            if save_leak is not None:
+                save_leak.write_text(text, encoding="utf-8")
+            typer.echo(f"You hold copy {session.mole}. Tools: {tools or 'none'}")
+            typer.echo(f"Utility {verdict.utility:.1%} (floor {UTILITY_FLOOR:.0%}); slots "
+                       f"{verdict.observed_slots}/{verdict.baseline_slots}; your log10 LR "
+                       f"{verdict.mole_log10_lr}")
+            typer.echo(f"Detector: {verdict.outcome}"
+                       + (f" -> {verdict.accused}" if verdict.accused else ""))
+            typer.echo(f"{'YOU EVADED' if verdict.win else 'CAUGHT or invalid'}; "
+                       f"score {verdict.score}")
+        rows = redteam_leaderboard(db_file)
+    except (OSError, ValueError) as error:
+        fail(error)
+    typer.echo("Leaderboard (best per player):")
+    for rank, (name, score, kept, outcome) in enumerate(rows, start=1):
+        typer.echo(f"{rank:>2}. {name:<16} {score:>4}  utility {kept:.1%}  {outcome}")

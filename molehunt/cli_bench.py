@@ -182,12 +182,13 @@ def live(
         server = make_server(state, host, port)
     except (OSError, ValueError) as error:
         fail(error)
-    try:
-        lan_ip = socket.gethostbyname(socket.gethostname())
-    except OSError:
-        lan_ip = "this-laptop-ip"
-    typer.echo(f"MoleHunt Live on http://{lan_ip}:{server.server_port}/  (PIN {state.pin})")
-    typer.echo(f"Examiner board: http://{lan_ip}:{server.server_port}/board")
+    addresses = sorted({info[4][0] for info in socket.getaddrinfo(
+        socket.gethostname(), None, socket.AF_INET)} - {"127.0.0.1"}) or ["127.0.0.1"]
+    typer.echo(f"PIN: {state.pin}")
+    for address in addresses:
+        typer.echo(f"Join:  http://{address}:{server.server_port}/   "
+                   f"Board: http://{address}:{server.server_port}/board")
+    typer.echo("Use the address on the same network as the other laptop (usually 192.168.x.x).")
     typer.echo("Same Wi-Fi only. Allow Python through the firewall if asked. Ctrl+C stops.")
     try:
         server.serve_forever()

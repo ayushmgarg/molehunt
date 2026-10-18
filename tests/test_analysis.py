@@ -51,3 +51,23 @@ def test_decision_attributes_clean_copy_and_withholds_on_empty_text() -> None:
     assert clean.outcome == "attribute" and clean.candidate_id == "E02"
     empty = analyze_text(SOURCE, KEY, ROSTER, "unrelated words only").decision()
     assert empty.outcome == "no attribution"
+
+
+def test_collusion_mode_accuses_both_colluders_only() -> None:
+    from pathlib import Path
+
+    from molehunt.analysis import analyze_collusion, tardos_codewords
+    from molehunt.attacks.collusion import collude_bits
+
+    source = Path(__file__).parents[1].joinpath("data", "masters", "m2_zoning.md").read_text(
+        encoding="utf-8"
+    )
+    roster = [f"E{index:03}" for index in range(1, 31)]
+    prepared = prepare_master(source, KEY)
+    _, codewords = tardos_codewords(KEY, roster, len(prepared.slots))
+    merged = collude_bits([codewords["E005"], codewords["E021"]], "majority", seed=3)
+    leak = render_text(prepared.template, prepared.slots, merged)
+    result = analyze_collusion(source, KEY, roster, leak)
+    assert set(result.accused) == {"E005", "E021"}
+    assert result.violations == ()
+    assert result.calibration.threshold > 0

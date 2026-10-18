@@ -11,6 +11,7 @@ from molehunt.core.autoslots import master_title, prepare_master
 from molehunt.core.codes import generate_codewords
 from molehunt.core.keys import KEY_BYTES
 from molehunt.core.render import render_docx, render_text
+from molehunt.core.tardos import generate_tardos_biases, generate_tardos_codeword
 from molehunt.registry import (
     add_employee,
     get_master,
@@ -59,6 +60,8 @@ def issue_registered_copy(
     employee_id: str,
     master_reference: str | Path,
     output_path: str | Path,
+    *,
+    code: str = "single",
 ) -> IssueResult:
     """Verify a registered master and write and record a fingerprinted copy."""
     if len(key) != KEY_BYTES:
@@ -82,7 +85,12 @@ def issue_registered_copy(
         raise ValueError("registered master changed after registration")
     prepared = prepare_master(source, key)
     template, slots = prepared.template, prepared.slots
-    bits = generate_codewords(key, [employee_id], len(slots))[employee_id]
+    if code == "single":
+        bits = generate_codewords(key, [employee_id], len(slots))[employee_id]
+    elif code == "tardos":
+        bits = generate_tardos_codeword(key, employee_id, generate_tardos_biases(key, len(slots)))
+    else:
+        raise ValueError("code must be 'single' or 'tardos'")
     output = Path(output_path)
     if output.suffix.casefold() == ".docx":
         content = render_docx(template, slots, bits, key, employee_id)

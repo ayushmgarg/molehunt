@@ -43,3 +43,9 @@
 ## Live LAN demo (rule 7 exception)
 
 - Approved by the project owner on 2026-10-18 for showcasing. `molehunt live` uses the stdlib `ThreadingHTTPServer` (no new dependency), only when started by hand. Every POST needs the host's random 6-digit PIN (constant-time compare); uploads are capped at 2 MB, stored under generated names, limited to .txt/.md/.docx/.png, and go through the normal intake (read-only original, SHA-256, custody entry). No outbound connections and no scanning.
+
+## Weak-spot fixes after the benchmark
+
+- Forged channels: a genuine copy's bits are keyed random (about half 0). If a channel's reads are almost all one value (two-sided binomial p < 1e-6, at least 12 reads), the channel was normalised (A4/A6) and its reads become erasures. This turns dictionary-canonicalisation false accusations into "no attribution".
+- Shuffled paragraphs (A9): suspect paragraphs are put back in master order by word-set overlap (Jaccard) before alignment; windows map back to original offsets.
+- Full-variant flipping (A10 at strength 1) is left as measured: an attacker who can flip every pair already holds the dictionary, and the copy then reads as noise.

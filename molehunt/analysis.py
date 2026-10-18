@@ -22,7 +22,7 @@ from molehunt.core.tardos import (
 )
 from molehunt.detect.align import align_to_master
 from molehunt.detect.decide import Decision, decide
-from molehunt.detect.extract import SlotObservation, extract_variants
+from molehunt.detect.extract import SlotObservation, erase_uniform_channels, extract_variants
 from molehunt.detect.score import CandidateScore, score_candidates
 from molehunt.detect.tardos import (
     TardosCalibration,
@@ -42,6 +42,7 @@ class AnalysisResult:
     observations: tuple[int | None, ...]
     codewords: dict[str, Codeword]
     scores: tuple[CandidateScore, ...]
+    forged_channels: tuple[str, ...] = ()
 
     @property
     def observed_slots(self) -> int:
@@ -80,9 +81,10 @@ def analyze_prepared(
 ) -> AnalysisResult:
     """Score a suspect text against pre-computed candidate codewords."""
     extracted, observations = observe(prepared, text)
+    observations, forged = erase_uniform_channels(prepared.slots, observations)
     scores = score_candidates(observations, codewords, flip_rate=flip_rate)
     frozen = {candidate: tuple(bits) for candidate, bits in codewords.items()}
-    return AnalysisResult(prepared, extracted, observations, frozen, scores)
+    return AnalysisResult(prepared, extracted, observations, frozen, scores, forged)
 
 
 def analyze_text(

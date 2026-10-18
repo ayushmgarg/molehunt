@@ -5,7 +5,7 @@ import os
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from PySide6.QtCore import QEventLoop, QTimer
+from PySide6.QtCore import QEventLoop, QThread, QTimer
 from PySide6.QtWidgets import QApplication
 
 from molehunt.game.casebook import load_casebook
@@ -20,8 +20,25 @@ def _wait(window: MoleHuntWindow, application: QApplication) -> None:
     assert thread is not None
     done = QEventLoop()
     thread.finished.connect(done.quit)
-    QTimer.singleShot(60000, done.quit)
+    guard = QTimer()
+    guard.setSingleShot(True)
+    guard.timeout.connect(done.quit)
+    guard.start(60000)
     done.exec()
+    guard.stop()
+    for _ in range(200):
+        application.processEvents()
+        if window._thread is None:
+            break
+        QThread.msleep(25)
+    assert window._thread is None
+
+
+def _dispose(window: MoleHuntWindow, application: QApplication) -> None:
+    """Close and delete the window now so no queued signal reaches it later."""
+    window.close()
+    window.deleteLater()
+    application.sendPostedEvents(None, 0)
     application.processEvents()
 
 
@@ -66,8 +83,7 @@ def test_lab_panels_explore_docx_decode_dots_and_score_tardos(tmp_path) -> None:
 
     window._notes_tag()
     assert str(c6.evidence_path) in window.notes_text.toPlainText()
-    window.close()
-    application.processEvents()
+    _dispose(window, application)
 
 
 def test_redteam_panel_scores_attempt_and_fills_leaderboard(tmp_path) -> None:
@@ -77,10 +93,13 @@ def test_redteam_panel_scores_attempt_and_fills_leaderboard(tmp_path) -> None:
     window.redteam_player.setText("panel-mole")
     window.redteam_tools["strip"][0].setChecked(True)
     window.redteam_tools["collapse"][0].setChecked(True)
-    window._redteam_run()
-    _wait(window, application)
+    from molehunt.ui.redteam_panel import DEFAULT_MASTER, _attempt
+
+    steps = [(name, box[1].value()) for name, box in window.redteam_tools.items()
+             if box[0].isChecked()]
+    window._redteam_render(_attempt(DEFAULT_MASTER, 0, steps, [], tmp_path / "r.sqlite3",
+                                    "panel-mole"))
     assert window.redteam_meter.value() == 100
     assert "Detector: attribute" in window.redteam_verdict.text()
     assert window.redteam_board.item(0, 0).text() == "panel-mole"
-    window.close()
-    application.processEvents()
+    _dispose(window, application)

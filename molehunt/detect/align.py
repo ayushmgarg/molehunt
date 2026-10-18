@@ -24,6 +24,7 @@ from functools import lru_cache
 
 from molehunt.core.slots import Slot
 from molehunt.core.template import Template
+from molehunt.detect.reorder import map_back, restore_order
 from molehunt.detect.skeleton import Skeleton, _char_skeleton, build_skeleton
 
 _TOKEN = re.compile(r"\w+|[^\w\s]")
@@ -201,7 +202,7 @@ def _anchored(start: int, end: int, master: _Tokens, paired: list[int],
     return True
 
 
-def align_to_master(
+def _align_ordered(
     template: Template,
     slots: Sequence[Slot],
     suspect_text: str,
@@ -235,4 +236,24 @@ def align_to_master(
         if not anchored:
             original_end = original_start
         result.append(SlotWindow(slot, original_start, original_end, anchored))
+    return tuple(result)
+
+
+def align_to_master(
+    template: Template,
+    slots: Sequence[Slot],
+    suspect_text: str,
+) -> tuple[SlotWindow, ...]:
+    """Restore paragraph order if shuffled, then align; windows use original offsets."""
+    restored = restore_order(template, suspect_text)
+    if restored is None:
+        return _align_ordered(template, slots, suspect_text)
+    text, segments = restored
+    result = []
+    for window in _align_ordered(template, slots, text):
+        start, end = map_back(window.start, segments), map_back(window.end, segments)
+        if start is None or end is None or end < start:
+            result.append(SlotWindow(window.slot, None, None))
+        else:
+            result.append(SlotWindow(window.slot, start, end, window.anchored))
     return tuple(result)

@@ -6,6 +6,8 @@ import unicodedata
 from collections.abc import Sequence
 from dataclasses import dataclass
 
+from scipy.stats import binom
+
 from molehunt.core.slots import Slot
 from molehunt.detect.align import SlotWindow
 
@@ -85,3 +87,34 @@ def extract_variants(
         offset = start + relative_offset if relative_offset is not None else None
         observations.append(SlotObservation(slot.index, slot.source_index, bit, offset))
     return tuple(observations)
+
+
+def erase_uniform_channels(
+    slots: Sequence[Slot],
+    bits: Sequence[int | None],
+    *,
+    p_cut: float = 1e-6,
+    min_observed: int = 12,
+) -> tuple[tuple[int | None, ...], tuple[str, ...]]:
+    """Erase channels whose reads are almost all one value (a forged channel).
+
+    A genuine copy carries keyed random bits, so within a channel about half the
+    reads are 0. Normalising attacks (A4 punctuation, A6 dictionary
+    canonicalisation) rewrite every slot to one variant and forge a constant bit.
+    Two-sided binomial test of the 0/1 balance: p = 2 * P(X <= min(k0, k1)),
+    X ~ Binomial(n, 0.5). If p < 1e-6 the channel's reads become erasures.
+    """
+    by_channel: dict[str, list[int]] = {}
+    for slot in slots:
+        if bits[slot.index] is not None:
+            by_channel.setdefault(slot.channel, []).append(bits[slot.index])
+    forged = []
+    for channel, values in by_channel.items():
+        n, ones = len(values), sum(values)
+        if n >= min_observed and 2 * binom.cdf(min(ones, n - ones), n, 0.5) < p_cut:
+            forged.append(channel)
+    cleaned = list(bits)
+    for slot in slots:
+        if slot.channel in forged:
+            cleaned[slot.index] = None
+    return tuple(cleaned), tuple(sorted(forged))

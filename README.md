@@ -1,37 +1,111 @@
 # MoleHunt
 
-MoleHunt is an offline, synthetic-data suite for document fingerprinting, leak attribution, chain of custody, and guided forensic cases. It is a teaching and validation project, not a claim of court-ready evidence.
+Forensic document attribution suite with an investigation casebook. A company
+issues each employee a uniquely fingerprinted copy of a confidential document.
+When a copy leaks (edited, normalised, partial, printed, or merged from several
+copies), MoleHunt recovers the fingerprint, ranks the issued copies with a
+likelihood ratio, fuses that with access/print/auth logs, and writes an
+examiner-style report.
 
-## Setup
+Offline, synthetic data only, no machine learning. It ranks **copies**, not
+people: a match says which issued copy a leak derives from, never who sent it.
 
-Requires Windows, macOS, or Linux with [uv](https://docs.astral.sh/uv/) installed. The project pins Python 3.11 in `requires-python`.
+Three modes on one engine:
 
-```powershell
+| Mode | What you do |
+|---|---|
+| Lab | register a master, issue copies, intake evidence, analyse, report |
+| Casebook | solve 7 seeded investigations; tools unlock as you progress |
+| Red Team | scrub your own copy under a 70% utility floor and try to evade the detector |
+
+## Install
+
+Needs [uv](https://docs.astral.sh/uv/). The project pins Python 3.11.
+
+```bash
 uv python install 3.11
-uv sync
-uv run molehunt --help
+uv sync --python 3.11
+uv run pytest -q
 ```
 
-Open the current native desktop workbench with `uv run molehunt serve`. It includes copy issuance, analysis, intake/custody, a seeded Red Team bench, a seven-case Casebook that locks tools to earned unlocks, and Evidence tools with a registry tree, byte viewer, non-printing Unicode inspection, master diff, and filtered/pinnable event timeline. Other advanced views remain in development. See `SPEC.md` and `docs/DESIGN.md` for the full target.
+## Quick start (Lab mode, CLI)
 
-## Current engine workflow
-
-Try the current workflow with the bundled synthetic master and roster. Create a key, issue one copy, analyze it, then run a small benchmark:
-
-```powershell
+```bash
 uv run molehunt init
-uv run molehunt suggest-slots data/demo/master.md --output reports/slot-suggestions.csv
-uv run molehunt register data/demo/master.md --master-id demo-master
-uv run molehunt issue E007 --master demo-master --output data/demo/issued/E007.txt
-uv run molehunt analyze data/demo/issued/E007.txt --master data/demo/master.md --employees data/demo/employees.csv --report reports/generated/E007.docx
-uv run molehunt attack --name A3 --strength 0.5 data/demo/issued/E007.txt --output data/demo/issued/E007-scrubbed.txt
-uv run molehunt bench --master data/demo/master.md --employees data/demo/employees.csv --attacks A1,A3,A8 --strengths 0,0.5,1 --seeds 0,1
+uv run molehunt roster --count 50 -o data/demo/roster50.csv
+uv run molehunt register data/masters/m1_roadmap.md --master-id M1
+uv run molehunt issue --master M1 --employees data/demo/roster50.csv --format txt,docx,pdf
+uv run molehunt attack --name A5 --strength 1 data/demo/issued/E007.txt -o reports/generated/leak.txt
+uv run molehunt intake reports/generated/leak.txt C-001 --actor EX-01
+uv run molehunt analyze reports/generated/leak.txt --master data/masters/m1_roadmap.md --employees data/demo/roster50.csv
+uv run molehunt report --case C-001 -o reports/generated/C-001.docx --master data/masters/m1_roadmap.md --employees data/demo/roster50.csv --examiner EX-01
+uv run molehunt custody demo
 ```
 
-`init` creates the local key, SQLite registry, and custody log. `register` stores a master and its keyed slot map; `issue` accepts a registered master ID or path and records the synthetic employee and issued copy. Issue output accepts `.txt`, `.md`, or `.docx`. The analyzer reports a ranking and LR; it does not make a final accusation until a decision threshold has been calibrated. `bench` writes run and channel-survival CSV files and plots under `bench/` by default.
+`analyze` prints the ranking (matches, z, binomial p, log10 LR) and a finding:
+`attribute` (with the ENFSI-style verbal scale), `cannot distinguish`, or
+`no attribution`. `custody demo` builds an 8-entry hash chain, flips one byte,
+and shows `BROKEN at seq 7`.
 
-`suggest-slots` exports curated lexical and spelling candidates with offsets and surrounding context. Review every proposal for meaning and grammar before adding variation markers to a master.
+Other commands: `suggest-slots`, `issue --code tardos` + `analyze --collusion`
+(collusion tracing), `analyze --logs access.csv` (log fusion), `custody add |
+verify | show | intake`, `redteam --tools strip,collapse,truncate:0.8`,
+`bench`. Run `uv run molehunt --help` for all options.
 
-Optional log fusion uses `analyze ... --logs access.csv`; the CSV columns are `employee_id,access_level,event`, with access levels `direct`, `indirect`, or `none` and documented event names such as `print_job` or `after_hours_download`. The report preserves fingerprint scores and adds the fused posterior and applied factors. These log weights are demo assumptions, not calibrated probabilities.
+## Workbench (desktop UI)
 
-Only generated synthetic people, documents, and logs belong in this repository. No network or scanning features are in scope.
+```bash
+uv run molehunt serve
+```
+
+Tabs: Evidence analysis (ranking, slot matrix, report), Issue copy, Intake and
+custody, Red Team bench (benchmark runner + Red Team boss with utility meter
+and leaderboard), Casebook (seeded cases, hints, Section 10 grading), Evidence
+tools (bytes and invisible characters, diff vs master, timeline, OOXML
+explorer, image dot analyser, Tardos scorer with threshold slider, notes).
+Tick "Casebook mode" to lock tools until each case earns them.
+
+## Benchmark
+
+```bash
+uv run molehunt bench            # same as: make bench
+```
+
+Runs the Section 6 protocol: 3 masters x 50 employees x 20 leakers x 12 attacks
+(A1-A11, A2b) x 3 strengths x 10 seeds, plus chains and Tardos collusion trials,
+in parallel workers (about 20 minutes on 8 cores). Writes `bench/results/*.csv`,
+`summary.json`, `targets.csv`, and plots. The archived run and its numbers are in
+[docs/BENCHMARK.md](docs/BENCHMARK.md); every claim about attack survival comes
+from there, not from the code.
+
+## Six-minute demo
+
+| Time | Action |
+|---|---|
+| 0:00 | Pitch: three modes, one engine; copies not people |
+| 0:30 | `register` + batch `issue`; Evidence tools > Diff vs master on one copy |
+| 1:30 | `attack` (A5 + truncate) then `analyze` and `report --case`; show LR and verbal scale |
+| 2:30 | `custody verify` passes; `custody demo` shows `BROKEN at seq 7` |
+| 3:30 | Casebook Case 1: hex view, invisible revealer bit string, submit, score |
+| 4:30 | `docs/benchmark/plots/survival.png` and `targets.csv`; state the weak spots |
+| 5:15 | Red Team boss: 30-second attempt to beat the detector |
+| 5:45 | Limits: copy vs person, heavy paraphrase, very short leaks |
+
+## Layout
+
+```text
+molehunt/core      keys, template, slots, autoslots (C1/C2/C3b), codes, tardos, render
+molehunt/channels  zerowidth, whitespace, punct, homoglyph, lexical, spelling, docx_meta, printdots, dot_locate
+molehunt/detect    ingest, align, extract, score, decide, tardos, fuse, logs
+molehunt/attacks   transform (A1-A11), collusion (A12), harness, bench_artifacts, collusion_bench
+molehunt/game      casebook, generator, case_evidence, tools, validator, leaderboard, redteam, cases/*.yaml
+molehunt/ui        PySide6 workbench
+data/masters       three synthetic masters (650-815 words, 262-267 slots each)
+docs               SPEC overrides, DECISIONS, EXPLAIN_<module> viva notes, VALIDATION, BENCHMARK, PLAN_AUDIT
+```
+
+## Rules
+
+Python 3.11, deterministic (HMAC-SHA256 or seeded RNGs), statistics only, no
+network features, synthetic people and documents only. See `AGENTS.md`,
+`SPEC.md`, and `docs/DECISIONS.md`.

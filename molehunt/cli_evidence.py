@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated
 
@@ -88,11 +89,14 @@ def custody_show(ledger: LedgerOption = DEFAULT_CUSTODY_LOG) -> None:
 
 @custody_app.command("demo")
 def custody_demo(
-    ledger: Annotated[Path, typer.Option("--ledger", help="New demo ledger path")]
-    = Path("reports/tamper-demo/custody.log"),
+    ledger: Annotated[Path | None, typer.Option("--ledger", help="New demo ledger path")]
+    = None,
     flip_seq: Annotated[int, typer.Option("--flip-seq", min=1, max=8)] = 7,
 ) -> None:
     """Tamper demo: build an 8-entry chain, flip one byte, show verify fail."""
+    if ledger is None:
+        stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S")
+        ledger = Path("reports/generated") / f"tamper-demo-{stamp}" / "custody.log"
     try:
         before, after = tamper_demo(ledger, flip_seq=flip_seq)
     except (OSError, ValueError) as error:

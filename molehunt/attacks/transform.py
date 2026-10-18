@@ -50,7 +50,7 @@ def attack_text(
     seed: int = 0,
     variants: Sequence[tuple[str, str]] = (),
 ) -> str:
-    """Apply one A1–A10 transform; each random choice derives from ``seed``."""
+    """Apply one A1–A11 transform; each random choice derives from ``seed``."""
     _validate_strength(strength)
     rng = random.Random(seed)
     if strength == 0 and attack_id != "A8":
@@ -155,7 +155,50 @@ def attack_text(
             return "".join(output)
 
         return re.sub(r"[A-Za-z]+", inject, text)
+    if attack_id == "A11":
+        return _ocr_model(text, strength, rng)
     raise ValueError(f"unknown text attack: {attack_id}")
+
+
+OCR_CHAR_ERROR = 0.02
+
+
+def _ocr_model(text: str, strength: float, rng: random.Random) -> str:
+    """A11 on text: a print-then-OCR pass keeps only visible plain characters.
+
+    Invisible marks are lost, look-alikes read as Latin, typography and spacing are
+    normalised, then each letter is misread with probability 0.02 * strength.
+    """
+    plain = "".join(
+        _PUNCTUATION.get(character, character)
+        for character in confusable_skeleton(unicodedata.normalize("NFKC", text))
+        if unicodedata.category(character) != "Cf"
+    )
+    plain = re.sub(r"\s+", " ", plain).strip()
+    output = []
+    for character in plain:
+        if character.isalpha() and rng.random() < OCR_CHAR_ERROR * strength:
+            alphabet = string.ascii_uppercase if character.isupper() else string.ascii_lowercase
+            output.append(rng.choice(alphabet.replace(character, "")))
+        else:
+            output.append(character)
+    return "".join(output)
+
+
+def attack_chain(
+    text: str,
+    attack_ids: Sequence[str],
+    *,
+    strength: float = 1.0,
+    seed: int = 0,
+    variants: Sequence[tuple[str, str]] = (),
+) -> str:
+    """Apply attacks in order; step k uses seed ``seed * 100 + k`` for independence."""
+    for step, attack_id in enumerate(attack_ids):
+        text = attack_text(
+            text, attack_id, strength=strength, seed=seed * 100 + step, variants=variants
+        )
+    return text
 
 
 def simulate_print_scan(

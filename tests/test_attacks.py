@@ -76,3 +76,23 @@ def test_unknown_attack_is_rejected() -> None:
         assert "attack" in str(error)
     else:
         raise AssertionError("unknown attack must fail")
+
+
+def test_a11_text_ocr_model_drops_invisible_and_typography_then_adds_char_errors() -> None:
+    text = "Plan​ to Рay “now” — fast.  " * 40
+    clean = attack_text(text, "A11", strength=0.0001, seed=3)
+    assert "​" not in clean and "Р" not in clean and " " not in clean
+    assert "“" not in clean and "—" not in clean and "  " not in clean
+    noisy = attack_text(text, "A11", strength=1.0, seed=3)
+    assert noisy == attack_text(text, "A11", strength=1.0, seed=3)
+    changed = sum(a != b for a, b in zip(clean, noisy, strict=False))
+    assert 0 < changed < 0.06 * len(clean)
+
+
+def test_attack_chain_applies_steps_in_order_with_derived_seeds() -> None:
+    from molehunt.attacks.transform import attack_chain
+
+    text = "Begin​ “the”   plan.\n\nSecond part.\n\nThird part."
+    chained = attack_chain(text, ("A1", "A3", "A4"), strength=1.0, seed=2)
+    assert chained == 'Begin "the" plan. Second part. Third part.'
+    assert chained == attack_chain(text, ("A1", "A3", "A4"), strength=1.0, seed=2)

@@ -37,7 +37,7 @@ def _add_field(form: QFormLayout, fields: dict[str, QLineEdit], key: str, label:
     layout.setContentsMargins(0, 0, 0, 0)
     layout.addWidget(field, 1)
     browse = QPushButton("Browse")
-    browse.clicked.connect(lambda: _browse(field, key in {"output", "report"}))
+    browse.clicked.connect(lambda: _browse(field, key in {"output", "report", "database"}))
     layout.addWidget(browse)
     form.addRow(label, row)
 
@@ -108,10 +108,12 @@ def build_pages(owner) -> QTabWidget:
     for name, title, specs, button_text, callback in (
         (
             "issue", "Issue copy",
-            (("master", "Master template", ""), ("employee", "Synthetic employee ID", ""),
+            (("master", "Master template to register", ""), ("master_id", "Registered master ID", ""),
+             ("database", "SQLite registry", ".molehunt/molehunt.sqlite3"),
+             ("employee", "Synthetic employee ID", ""),
              ("key", "Secret key", ".molehunt/master.key"),
              ("output", "Copy output (.txt, .md, .docx)", "")),
-            "Issue fingerprinted copy", owner._issue,
+            "Issue registered copy", owner._issue,
         ),
         (
             "intake", "Intake and custody",
@@ -133,7 +135,11 @@ def build_pages(owner) -> QTabWidget:
         button = QPushButton(button_text)
         button.clicked.connect(callback)
         form.addRow("", button)
-        if name == "intake":
+        if name == "issue":
+            register = QPushButton("Register master")
+            register.clicked.connect(owner._register)
+            form.addRow("", register)
+        elif name == "intake":
             verify = QPushButton("Verify custody log")
             verify.clicked.connect(owner._verify)
             form.addRow("", verify)

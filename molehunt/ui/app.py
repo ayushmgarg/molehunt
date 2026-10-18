@@ -14,7 +14,6 @@ from PySide6.QtWidgets import QApplication, QLabel, QLineEdit, QMainWindow, QTab
 from molehunt.attacks.harness import run_text_benchmark, write_benchmark
 from molehunt.core.codes import generate_codewords
 from molehunt.core.keys import KEY_BYTES
-from molehunt.core.render import render_docx, render_text
 from molehunt.core.slots import allocate_slots
 from molehunt.core.template import parse_template
 from molehunt.custody import verify_custody
@@ -25,6 +24,7 @@ from molehunt.detect.ingest import IngestedEvidence, ingest
 from molehunt.detect.logs import read_fusion_logs
 from molehunt.detect.score import CandidateScore, score_candidates
 from molehunt.intake import intake_evidence
+from molehunt.issuance import IssueResult, issue_registered_copy, register_master_file
 from molehunt.report import write_analysis_report
 from molehunt.ui.pages import build_pages
 from molehunt.ui.worker import TaskWorker
@@ -128,6 +128,28 @@ def _key(path: Path) -> bytes:
     if len(key) != KEY_BYTES:
         raise ValueError(f"key file must contain {KEY_BYTES} bytes")
     return key
+
+
+def _register_inputs(
+    master_path: Path, key_path: Path, database_path: Path, master_id: str
+) -> tuple[str, int]:
+    """Register one master for UI issuance and return its ID and slot count."""
+    key = _key(key_path)
+    registry_id = master_id.strip() or master_path.stem
+    slot_count = register_master_file(
+        database_path, key, master_path, master_id=registry_id
+    )
+    return registry_id, slot_count
+
+
+def _issue_inputs(
+    master_reference: str, employee_id: str, output_path: Path,
+    key_path: Path, database_path: Path,
+) -> IssueResult:
+    """Issue a copy through the same registered-master API as the CLI."""
+    return issue_registered_copy(
+        database_path, _key(key_path), employee_id, master_reference, output_path
+    )
 
 
 class MoleHuntWindow(QMainWindow):
@@ -295,25 +317,45 @@ class MoleHuntWindow(QMainWindow):
     def _issue(self) -> None:
         try:
             fields = self.fields["issue"]
-            key = _key(self._field_path("issue", "key"))
-            template = parse_template(self._field_path("issue", "master").read_text(encoding="utf-8"))
+            master_reference = fields["master_id"].text().strip() or fields["master"].text().strip()
+            if not master_reference:
+                raise ValueError("registered master ID or path is required")
             employee = fields["employee"].text().strip()
             if not employee:
                 raise ValueError("synthetic employee ID is required")
             output = self._field_path("issue", "output")
-            slots = allocate_slots(template, key)
-            codeword = generate_codewords(key, [employee], len(slots))[employee]
-            if output.suffix.casefold() == ".docx":
-                content = render_docx(template, slots, codeword, key, employee)
-            elif output.suffix.casefold() in {".txt", ".md"}:
-                content = render_text(template, slots, codeword).encode("utf-8")
-            else:
-                raise ValueError("copy output must use .txt, .md, or .docx")
-            output.parent.mkdir(parents=True, exist_ok=True)
-            output.write_bytes(content)
-            self.status.setText(f"Issued synthetic copy {employee}: {output}")
+            key_path = self._field_path("issue", "key")
+            database = self._field_path("issue", "database")
+            self._start_task(
+                lambda: _issue_inputs(master_reference, employee, output, key_path, database),
+                self._render_issued,
+            )
         except (OSError, UnicodeError, ValueError) as error:
             self.status.setText(f"Issue error: {error}")
+
+    def _register(self) -> None:
+        try:
+            fields = self.fields["issue"]
+            master = self._field_path("issue", "master")
+            key = self._field_path("issue", "key")
+            database = self._field_path("issue", "database")
+            master_id = fields["master_id"].text().strip()
+            self._start_task(
+                lambda: _register_inputs(master, key, database, master_id),
+                self._render_registered,
+            )
+        except (OSError, UnicodeError, ValueError) as error:
+            self.status.setText(f"Registration error: {error}")
+
+    def _render_registered(self, result: tuple[str, int]) -> None:
+        master_id, slot_count = result
+        self.fields["issue"]["master_id"].setText(master_id)
+        self.status.setText(f"Registered master {master_id}: {slot_count} slots")
+
+    def _render_issued(self, result: IssueResult) -> None:
+        self.status.setText(
+            f"Issued copy {result.copy_id} for {result.employee_id}: {result.output_path}"
+        )
 
     def _intake(self) -> None:
         try:

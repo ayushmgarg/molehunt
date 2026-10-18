@@ -1,6 +1,7 @@
 """Smoke tests for the native PySide6 workbench shell."""
 
 import os
+import sqlite3
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
@@ -81,5 +82,47 @@ def test_workbench_analysis_populates_candidate_slot_matrix(tmp_path) -> None:
         for column in range(1, window.slot_matrix.columnCount())
     }
     assert symbols == {"○"}
+    window.close()
+    application.processEvents()
+
+
+def test_workbench_registers_and_issues_through_sqlite_registry(tmp_path) -> None:
+    application = QApplication.instance() or QApplication([])
+    key = bytes(range(32))
+    master = tmp_path / "master.md"
+    master.write_text("A {{lex:begin|start}} line.", encoding="utf-8")
+    key_path = tmp_path / "key"
+    key_path.write_bytes(key)
+    database = tmp_path / "registry.sqlite3"
+    output = tmp_path / "issued" / "E001.txt"
+
+    window = MoleHuntWindow()
+    fields = window.fields["issue"]
+    fields["master"].setText(str(master))
+    fields["master_id"].setText("M1")
+    fields["database"].setText(str(database))
+    fields["key"].setText(str(key_path))
+    fields["employee"].setText("E001")
+    fields["output"].setText(str(output))
+    window._register()
+    registered = QEventLoop()
+    window._thread.finished.connect(registered.quit)
+    QTimer.singleShot(10000, registered.quit)
+    registered.exec()
+    application.processEvents()
+    assert window.status.text() == "Registered master M1: 1 slots"
+
+    window._issue()
+    issued = QEventLoop()
+    window._thread.finished.connect(issued.quit)
+    QTimer.singleShot(10000, issued.quit)
+    issued.exec()
+    application.processEvents()
+    assert window.status.text().startswith("Issued copy ")
+    with sqlite3.connect(database) as connection:
+        row = connection.execute(
+            "SELECT master_id, employee_id, format, path FROM copies"
+        ).fetchone()
+    assert row == ("M1", "E001", "txt", str(output.resolve()))
     window.close()
     application.processEvents()

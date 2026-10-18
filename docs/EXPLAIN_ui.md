@@ -2,6 +2,7 @@
 
 - The PySide6 window is a front end for the same engine functions used by the CLI.
 - Tabs provide evidence analysis, copy issuance, intake/custody, and the Red Team benchmark.
+- The issue tab registers a template and issues copies through the shared SQLite-backed API.
 - The analysis view shows the candidate table, evidence hash, observed-slot count, and optional DOCX report.
 - An optional fusion CSV adds a separate posterior table with access priors and the named event factors.
 - Its slot matrix marks each candidate slot with a circle for match, cross for mismatch, and dash for erasure.

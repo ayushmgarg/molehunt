@@ -1,7 +1,6 @@
 """Initial CLI for key setup and local leak analysis."""
 
 import csv
-import hashlib
 import json
 import sqlite3
 from pathlib import Path
@@ -15,7 +14,6 @@ from molehunt.attacks.transform import attack_text
 from molehunt.channels.suggest import suggest_slots as find_slot_suggestions
 from molehunt.core.codes import generate_codewords
 from molehunt.core.keys import KEY_BYTES, load_or_create_key
-from molehunt.core.render import render_docx, render_text
 from molehunt.core.slots import allocate_slots
 from molehunt.core.template import parse_template
 from molehunt.custody import append_custody_entry, sha256_file, verify_custody
@@ -26,15 +24,11 @@ from molehunt.detect.ingest import ingest
 from molehunt.detect.logs import read_fusion_logs
 from molehunt.detect.score import score_candidates
 from molehunt.intake import intake_evidence
+from molehunt.issuance import issue_registered_copy, register_master_file
 from molehunt.registry import (
-    add_employee,
-    get_master,
-    get_master_by_path,
     initialize_database,
-    record_copy,
     record_custody_entry,
     record_evidence,
-    register_master,
 )
 from molehunt.report import write_analysis_report
 
@@ -136,19 +130,13 @@ def register(
     """Register a master and its keyed slot map in the local SQLite registry."""
     try:
         key = key_file.read_bytes()
-        if len(key) != KEY_BYTES:
-            raise ValueError(f"key file must contain {KEY_BYTES} bytes")
-        source = master.read_text(encoding="utf-8")
-        parsed = parse_template(source)
-        slots = allocate_slots(parsed, key)
-        registry_id = master_id or master.stem
-        registry_title = title or master.stem.replace("_", " ").title()
-        initialize_database(db_file)
-        register_master(db_file, registry_id, registry_title, master, source, slots)
+        slot_count = register_master_file(
+            db_file, key, master, master_id=master_id, title=title
+        )
     except (OSError, UnicodeError, ValueError, sqlite3.Error) as error:
         typer.echo(f"Error: {error}", err=True)
         raise typer.Exit(code=2) from error
-    typer.echo(f"Registered {registry_id}: {len(slots)} slots ({master})")
+    typer.echo(f"Registered {master_id or master.stem}: {slot_count} slots ({master})")
 
 
 @app.command()
@@ -161,44 +149,14 @@ def issue(
 ) -> None:
     """Issue and registry-record a deterministic fingerprinted copy."""
     try:
-        if not employee_id.strip():
-            raise ValueError("employee ID must not be empty")
         key = key_file.read_bytes()
-        if len(key) != KEY_BYTES:
-            raise ValueError(f"key file must contain {KEY_BYTES} bytes")
-        if not db_file.is_file():
-            raise ValueError("registry is not initialized; run molehunt init")
-        master_path = Path(master)
-        record = (
-            get_master_by_path(db_file, master_path)
-            if master_path.is_file()
-            else get_master(db_file, master)
-        )
-        if record is None:
-            raise ValueError("master is not registered; run molehunt register first")
-        master_path = Path(record["template_path"])
-        source = master_path.read_text(encoding="utf-8")
-        if hashlib.sha256(source.encode("utf-8")).hexdigest() != record["sha256"]:
-            raise ValueError("registered master changed after registration")
-        template = parse_template(source)
-        slots = allocate_slots(template, key)
-        codeword = generate_codewords(key, [employee_id], len(slots))[employee_id]
-        if output.suffix.casefold() == ".docx":
-            content = render_docx(template, slots, codeword, key, employee_id)
-        elif output.suffix.casefold() in {".txt", ".md"}:
-            content = render_text(template, slots, codeword).encode("utf-8")
-        else:
-            raise ValueError("output file must use .txt, .md, or .docx")
-        add_employee(db_file, employee_id)
-        output.parent.mkdir(parents=True, exist_ok=True)
-        output.write_bytes(content)
-        copy_id = record_copy(db_file, record["id"], employee_id, output)
+        result = issue_registered_copy(db_file, key, employee_id, master, output)
     except (OSError, UnicodeError, ValueError, sqlite3.Error) as error:
         typer.echo(f"Error: {error}", err=True)
         raise typer.Exit(code=2) from error
 
     typer.echo(
-        f"Issued copy {copy_id} for {employee_id}: {output} ({len(slots)} slots)"
+        f"Issued copy {result.copy_id} for {employee_id}: {output} ({result.slot_count} slots)"
     )
 
 

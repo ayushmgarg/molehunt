@@ -16,6 +16,8 @@ posterior ranking with each access prior and named event multiplier. The report 
 both the original fingerprint ranking and the log-fusion explanation.
 `bench` renders synthetic copies, runs the selected attacks, then records rankings,
 per-channel survival, and elapsed time as CSV and plots.
+`attack --name A3 copy.txt -o scrubbed.txt` applies one seeded A1–A10 or A2b text
+transform to a copy and refuses to overwrite its input.
 `custody add` records a file's SHA-256 in the JSONL chain and SQLite mirror;
 `custody verify` checks the JSONL event chain and `custody show` lists its events.
 `intake` creates case-scoped original and working copies and starts the custody log.

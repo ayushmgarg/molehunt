@@ -319,6 +319,32 @@ def test_bench_writes_measurements_for_requested_attacks(tmp_path: Path) -> None
     assert (result_dir / "plots" / "survival.png").is_file()
 
 
+def test_attack_command_writes_seeded_text_transform(tmp_path: Path) -> None:
+    source = tmp_path / "copy.txt"
+    source.write_text("  Alpha\u00a0 beta   gamma  ", encoding="utf-8")
+    output = tmp_path / "scrubbed" / "copy.txt"
+    result = runner.invoke(
+        app,
+        ["attack", "--name", "A3", "--strength", "1", str(source), "--output", str(output)],
+    )
+    assert result.exit_code == 0, result.stdout
+    assert source.read_text(encoding="utf-8") == "  Alpha\u00a0 beta   gamma  "
+    assert output.read_text(encoding="utf-8") == "Alpha beta gamma"
+    assert "Applied A3" in result.stdout
+
+
+def test_attack_command_refuses_to_overwrite_source(tmp_path: Path) -> None:
+    source = tmp_path / "copy.txt"
+    source.write_text("unchanged", encoding="utf-8")
+    result = runner.invoke(
+        app,
+        ["attack", "--name", "A1", str(source), "--output", str(source)],
+    )
+    assert result.exit_code == 2
+    assert "must not overwrite" in result.stderr
+    assert source.read_text(encoding="utf-8") == "unchanged"
+
+
 def test_custody_cli_records_and_verifies_evidence(tmp_path: Path) -> None:
     evidence = tmp_path / "leak.txt"
     evidence.write_text("synthetic evidence", encoding="utf-8")

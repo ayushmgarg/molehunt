@@ -11,6 +11,7 @@ import typer
 
 from molehunt import __version__
 from molehunt.attacks.harness import run_text_benchmark, write_benchmark
+from molehunt.attacks.transform import attack_text
 from molehunt.channels.suggest import suggest_slots as find_slot_suggestions
 from molehunt.core.codes import generate_codewords
 from molehunt.core.keys import KEY_BYTES, load_or_create_key
@@ -296,6 +297,32 @@ def analyze(
         typer.echo("Finding: ranked candidates only; decision threshold needs benchmark calibration.")
     if report_path is not None:
         typer.echo(f"Report: {report_path}")
+
+
+@app.command()
+def attack(
+    name: Annotated[str, typer.Option("--name", help="Attack ID: A1 through A10, or A2b")],
+    evidence: Annotated[Path, typer.Argument(help="Input .txt or .md copy")],
+    output: Annotated[Path, typer.Option("--output", "-o", help="Scrubbed output .txt or .md")],
+    strength: Annotated[float, typer.Option("--strength", min=0, max=1)] = 1.0,
+    seed: Annotated[int, typer.Option("--seed", help="Seed for deterministic choices")] = 0,
+) -> None:
+    """Apply one seeded text attack to a copy and write the transformed output."""
+    try:
+        if evidence.suffix.casefold() not in {".txt", ".md"}:
+            raise ValueError("attack input must use .txt or .md")
+        if output.suffix.casefold() not in {".txt", ".md"}:
+            raise ValueError("attack output must use .txt or .md")
+        if evidence.resolve() == output.resolve():
+            raise ValueError("attack output must not overwrite the input copy")
+        source = evidence.read_text(encoding="utf-8")
+        attacked = attack_text(source, name.upper(), strength=strength, seed=seed)
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(attacked, encoding="utf-8", newline="")
+    except (OSError, UnicodeError, ValueError) as error:
+        typer.echo(f"Error: {error}", err=True)
+        raise typer.Exit(code=2) from error
+    typer.echo(f"Applied {name.upper()} at strength {strength:g} (seed {seed}): {output}")
 
 
 @app.command()

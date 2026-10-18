@@ -24,6 +24,7 @@ uv run molehunt suggest-slots data/demo/master.md --output reports/slot-suggesti
 uv run molehunt register data/demo/master.md --master-id demo-master
 uv run molehunt issue E007 --master demo-master --output data/demo/issued/E007.txt
 uv run molehunt analyze data/demo/issued/E007.txt --master data/demo/master.md --employees data/demo/employees.csv --report reports/generated/E007.docx
+uv run molehunt attack --name A3 --strength 0.5 data/demo/issued/E007.txt --output data/demo/issued/E007-scrubbed.txt
 uv run molehunt bench --master data/demo/master.md --employees data/demo/employees.csv --attacks A1,A3,A8 --strengths 0,0.5,1 --seeds 0,1
 ```
 

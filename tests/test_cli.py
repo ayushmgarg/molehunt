@@ -62,6 +62,46 @@ def test_analyze_ranks_clean_rendered_copy(tmp_path: Path) -> None:
     assert candidate_rows[0] == "E007"
 
 
+def test_issue_creates_copy_that_analyze_identifies(tmp_path: Path) -> None:
+    key_path = tmp_path / "master.key"
+    key_path.write_bytes(bytes(range(32)))
+    master_path = tmp_path / "master.md"
+    master_path.write_text(
+        "\n".join(
+            f"Section {index:02}: " + "{{lex:begin|start}}."
+            for index in range(64)
+        ),
+        encoding="utf-8",
+    )
+    roster_path = tmp_path / "employees.csv"
+    roster_path.write_text("id\nE001\nE002\nE003\n", encoding="utf-8")
+    copy_path = tmp_path / "issued.txt"
+
+    issued = runner.invoke(
+        app,
+        [
+            "issue", "E002", "--master", str(master_path), "--key-file", str(key_path),
+            "--output", str(copy_path),
+        ],
+    )
+    assert issued.exit_code == 0, issued.stdout
+    assert "E002" in issued.stdout
+    analyzed = runner.invoke(
+        app,
+        [
+            "analyze", str(copy_path), "--master", str(master_path),
+            "--employees", str(roster_path), "--key-file", str(key_path),
+        ],
+    )
+    assert analyzed.exit_code == 0, analyzed.stdout
+    first_candidate = next(
+        line.split()[0]
+        for line in analyzed.stdout.splitlines()
+        if line.startswith(("E001", "E002", "E003"))
+    )
+    assert first_candidate == "E002"
+
+
 def test_analyze_rejects_roster_without_id_column(tmp_path: Path) -> None:
     key_path = tmp_path / "master.key"
     key_path.write_bytes(b"k" * 32)

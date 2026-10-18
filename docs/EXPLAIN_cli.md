@@ -1,6 +1,8 @@
 # Explain: analysis CLI
 
 `init` creates the local 32-byte key file without printing its contents.
+`issue` derives a codeword from the key and synthetic employee ID, then renders a text
+or DOCX copy using the master template's keyed slot map.
 `analyze` reads a master template, CSV roster IDs, and evidence; then calls the same
 parse, slot, align, extract, and score functions used by the library.
 `bench` renders synthetic copies, runs the selected attacks, then records rankings,

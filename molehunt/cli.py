@@ -10,6 +10,7 @@ from molehunt import __version__
 from molehunt.attacks.harness import run_text_benchmark, write_benchmark
 from molehunt.core.codes import generate_codewords
 from molehunt.core.keys import KEY_BYTES, load_or_create_key
+from molehunt.core.render import render_docx, render_text
 from molehunt.core.slots import allocate_slots
 from molehunt.core.template import parse_template
 from molehunt.detect.align import align_to_master
@@ -41,6 +42,38 @@ def init(
         typer.echo(f"Error: {error}", err=True)
         raise typer.Exit(code=2) from error
     typer.echo(f"Key ready: {key_file} ({KEY_BYTES} bytes)")
+
+
+@app.command()
+def issue(
+    employee_id: Annotated[str, typer.Argument(help="Synthetic employee ID")],
+    master: Annotated[Path, typer.Option("--master", help="Variation-marked master document")],
+    output: Annotated[Path, typer.Option("--output", "-o", help="Copy output path (.txt, .md, or .docx)")],
+    key_file: Annotated[Path, typer.Option("--key-file")] = Path(".molehunt/master.key"),
+) -> None:
+    """Issue a deterministic fingerprinted copy for a synthetic employee ID."""
+    try:
+        if not employee_id.strip():
+            raise ValueError("employee ID must not be empty")
+        key = key_file.read_bytes()
+        if len(key) != KEY_BYTES:
+            raise ValueError(f"key file must contain {KEY_BYTES} bytes")
+        template = parse_template(master.read_text(encoding="utf-8"))
+        slots = allocate_slots(template, key)
+        codeword = generate_codewords(key, [employee_id], len(slots))[employee_id]
+        if output.suffix.casefold() == ".docx":
+            content = render_docx(template, slots, codeword, key, employee_id)
+        elif output.suffix.casefold() in {".txt", ".md"}:
+            content = render_text(template, slots, codeword).encode("utf-8")
+        else:
+            raise ValueError("output file must use .txt, .md, or .docx")
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_bytes(content)
+    except (OSError, UnicodeError, ValueError) as error:
+        typer.echo(f"Error: {error}", err=True)
+        raise typer.Exit(code=2) from error
+
+    typer.echo(f"Issued copy for {employee_id}: {output} ({len(slots)} slots)")
 
 
 def _read_employee_ids(path: Path) -> list[str]:

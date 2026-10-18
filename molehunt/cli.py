@@ -1,8 +1,8 @@
 """Command-line entry point. Commands are added as their engine phases land."""
 
-from molehunt import __version__
-
 import typer
+
+from molehunt import __version__
 
 app = typer.Typer(
     name="molehunt",

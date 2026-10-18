@@ -14,6 +14,7 @@ from molehunt.core.autoslots import PreparedMaster, prepare_master
 from molehunt.core.codes import Codeword, generate_codewords
 from molehunt.core.keys import KEY_BYTES
 from molehunt.detect.align import align_to_master
+from molehunt.detect.decide import Decision, decide
 from molehunt.detect.extract import SlotObservation, extract_variants
 from molehunt.detect.score import CandidateScore, score_candidates
 
@@ -32,6 +33,12 @@ class AnalysisResult:
     def observed_slots(self) -> int:
         """Number of non-erased slots."""
         return sum(bit is not None for bit in self.observations)
+
+    def decision(self, *, alpha: float = 0.001, separation: float = 2.0) -> Decision:
+        """Apply the Bonferroni + separability rule over all candidates."""
+        return decide(
+            self.scores, candidates=len(self.codewords), alpha=alpha, separation=separation
+        )
 
     def channel_survival(self) -> dict[str, tuple[int, int]]:
         """Per channel: (observed, total) slot counts."""

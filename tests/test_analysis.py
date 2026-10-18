@@ -44,3 +44,10 @@ def test_stripped_copy_erases_zero_width_but_keeps_owner_first() -> None:
 def test_rejects_short_key() -> None:
     with pytest.raises(ValueError, match="32 bytes"):
         analyze_text(SOURCE, b"short", ROSTER, "text")
+
+
+def test_decision_attributes_clean_copy_and_withholds_on_empty_text() -> None:
+    clean = analyze_text(SOURCE, KEY, ROSTER, _copy("E02")).decision()
+    assert clean.outcome == "attribute" and clean.candidate_id == "E02"
+    empty = analyze_text(SOURCE, KEY, ROSTER, "unrelated words only").decision()
+    assert empty.outcome == "no attribution"

@@ -238,10 +238,8 @@ def analyze(
             posterior = "Cannot distinguish" if item.posterior is None else f"{item.posterior:.6f}"
             rationale = "; ".join(item.rationale)
             typer.echo(f"{item.candidate_id:<10} {item.prior:>5.3f} {posterior:>14}  {rationale}")
-    if not any(bit is not None for bit in observations):
-        typer.echo("Finding: cannot distinguish; no slots were observed.")
-    else:
-        typer.echo("Finding: ranked candidates only; decision threshold needs benchmark calibration.")
+    decision = result.decision()
+    typer.echo(f"Finding ({decision.outcome}): {decision.statement}")
     if report_path is not None:
         typer.echo(f"Report: {report_path}")
 

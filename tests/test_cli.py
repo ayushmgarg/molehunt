@@ -180,3 +180,19 @@ def test_custody_cli_records_and_verifies_evidence(tmp_path: Path) -> None:
     verified = runner.invoke(app, ["custody", "verify", "--ledger", str(ledger)])
     assert verified.exit_code == 0
     assert "VERIFIED: 1 entries" in verified.stdout
+
+
+def test_intake_cli_creates_case_files(tmp_path: Path) -> None:
+    source = tmp_path / "leak.txt"
+    source.write_text("synthetic evidence", encoding="utf-8")
+    case_root = tmp_path / "cases"
+    result = runner.invoke(
+        app,
+        [
+            "intake", str(source), "CASE-02", "--actor", "examiner-01", "--root", str(case_root),
+        ],
+    )
+    assert result.exit_code == 0, result.stdout
+    assert (case_root / "CASE-02" / "original" / "leak.txt").is_file()
+    assert (case_root / "CASE-02" / "working" / "leak.txt").is_file()
+    assert "SHA-256:" in result.stdout

@@ -18,6 +18,7 @@ from molehunt.detect.align import align_to_master
 from molehunt.detect.extract import extract_variants
 from molehunt.detect.ingest import ingest
 from molehunt.detect.score import score_candidates
+from molehunt.intake import intake_evidence
 
 app = typer.Typer(
     name="molehunt",
@@ -231,6 +232,26 @@ def custody_verify(
         typer.echo(f"BROKEN at seq {result.broken_seq}", err=True)
         raise typer.Exit(code=1)
     typer.echo(f"VERIFIED: {result.entries} entries")
+
+
+@app.command()
+def intake(
+    evidence: Annotated[Path, typer.Argument(help="Evidence file to copy into a case")],
+    case_id: Annotated[str, typer.Argument(help="New case ID")],
+    actor: Annotated[str, typer.Option("--actor", help="Synthetic examiner ID")],
+    root: Annotated[Path, typer.Option("--root", help="Evidence case directory")]
+    = Path("evidence"),
+) -> None:
+    """Create read-only original and writable working copy for evidence."""
+    try:
+        result = intake_evidence(evidence, case_id, actor=actor, root=root)
+    except (OSError, ValueError) as error:
+        typer.echo(f"Error: {error}", err=True)
+        raise typer.Exit(code=2) from error
+    typer.echo(f"Case: {result.case_id}")
+    typer.echo(f"Original: {result.original}")
+    typer.echo(f"Working copy: {result.working_copy}")
+    typer.echo(f"SHA-256: {result.sha256}")
 
 
 if __name__ == "__main__":

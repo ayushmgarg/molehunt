@@ -8,6 +8,7 @@ parse, slot, align, extract, and score functions used by the library.
 `bench` renders synthetic copies, runs the selected attacks, then records rankings,
 per-channel survival, and elapsed time as CSV and plots.
 `custody add` records a file's SHA-256; `custody verify` checks the JSONL event chain.
+`intake` creates case-scoped original and working copies and starts the custody log.
 
 For each attack/strength/seed/employee combination, top-1 accuracy is
 `correct highest-ranked candidates / number of runs`.

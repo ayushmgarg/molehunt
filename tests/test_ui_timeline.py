@@ -7,6 +7,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 from PySide6.QtCore import QCoreApplication, QEvent, QEventLoop, QTimer
 from PySide6.QtWidgets import QApplication
 
+from molehunt.game.timeline import load_timeline
 from molehunt.ui.app import MoleHuntWindow
 
 
@@ -44,4 +45,27 @@ def test_workbench_loads_filters_and_pins_timeline_events(tmp_path) -> None:
     window.close()
     window.deleteLater()
     QCoreApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
+    application.processEvents()
+
+
+def test_brush_selection_reports_window_and_pins_all(tmp_path) -> None:
+    from PySide6.QtCore import QItemSelectionModel
+
+    application = QApplication.instance() or QApplication([])
+    window = MoleHuntWindow()
+    log = tmp_path / "events.csv"
+    log.write_text(
+        "timestamp,employee_id,event\n2025-01-01T01:50:00,E002,badge_entry\n"
+        "2025-01-01T02:13:00,E001,login\n2025-01-01T02:14:00,E001,download\n",
+        encoding="utf-8",
+    )
+    window._timeline_loaded(load_timeline([log]))
+    model = window.timeline_table.selectionModel()
+    flags = QItemSelectionModel.SelectionFlag.Select | QItemSelectionModel.SelectionFlag.Rows
+    for row in (0, 2):
+        model.select(window.timeline_table.model().index(row, 0), flags)
+    assert "2025-01-01 01:50 to 02:14 UTC, 2 events, 24 min" in window.timeline_window.text()
+    window._timeline_pin_selected()
+    assert window.timeline_pins.toPlainText().count("\n") == 1
+    window.close()
     application.processEvents()

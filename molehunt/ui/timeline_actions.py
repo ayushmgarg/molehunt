@@ -67,9 +67,11 @@ class TimelineActions:
         if not rows:
             self.status.setText("Select a timeline event before pinning it")
             return
-        event = self._timeline_visible[rows[0].row()]
-        if event not in self._timeline_pinned:
-            self._timeline_pinned.append(event)
+        chosen = [self._timeline_visible[index.row()] for index in sorted(rows, key=lambda i: i.row())]
+        for event in chosen:
+            if event not in self._timeline_pinned:
+                self._timeline_pinned.append(event)
+        event = chosen[-1]
         self.timeline_pins.setPlainText(
             "\n".join(
                 f"{item.timestamp.isoformat(timespec='seconds')} · {item.employee_id} · "
@@ -77,4 +79,17 @@ class TimelineActions:
                 for item in self._timeline_pinned
             )
         )
-        self.status.setText(f"Pinned {event.event} from {event.source}")
+        self.status.setText(f"Pinned {len(chosen)} event(s); last {event.event} from {event.source}")
+
+    def _timeline_brush(self) -> None:
+        """Brush: a selected block of rows defines a time window; show its span."""
+        rows = sorted(index.row() for index in self.timeline_table.selectionModel().selectedRows())
+        if not rows:
+            self.timeline_window.setText("Brush: select rows (shift-click a range)")
+            return
+        first, last = self._timeline_visible[rows[0]], self._timeline_visible[rows[-1]]
+        people = sorted({self._timeline_visible[row].employee_id for row in rows})
+        self.timeline_window.setText(
+            f"Brush: {first.timestamp:%Y-%m-%d %H:%M} to {last.timestamp:%H:%M} UTC, "
+            f"{len(rows)} events, {(last.timestamp - first.timestamp).total_seconds() / 60:.0f} min, "
+            f"people: {', '.join(people)}")

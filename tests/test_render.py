@@ -39,3 +39,19 @@ def test_render_rejects_wrong_codeword_length() -> None:
     template = parse_template("{{lex:a|b}}")
     with pytest.raises(ValueError, match="codeword length"):
         render_text(template, allocate_slots(template, b"k" * 32), [])
+
+
+def test_pdf_copy_carries_text_and_keyed_dot_metadata() -> None:
+    from datetime import UTC, datetime
+
+    from molehunt.core.render import pdf_dot_metadata, render_pdf
+
+    template = parse_template("Plan to {{lex:begin|start}} now.\n\nSecond paragraph.")
+    slots = allocate_slots(template, b"k" * 32)
+    issued = datetime(2025, 3, 4, 13, 45, tzinfo=UTC)
+    meta = pdf_dot_metadata(b"k" * 32, "E001", issued)
+    assert (meta.printed_on.isoformat(), meta.minute_of_day) == ("2025-03-04", 13 * 60 + 45)
+    assert meta == pdf_dot_metadata(b"k" * 32, "E001", issued)
+    pdf = render_pdf(template, slots, [1], meta)
+    assert pdf.startswith(b"%PDF-")
+    assert render_pdf(template, slots, [1], meta)[:200] == pdf[:200]

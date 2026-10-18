@@ -1,13 +1,17 @@
-"""Render employee codewords into deterministic text and DOCX copies."""
+"""Render employee codewords into text, DOCX (C6 metadata), and PDF (C7 dots) copies."""
 
 from __future__ import annotations
 
 from collections.abc import Sequence
+from datetime import datetime
 from io import BytesIO
+from xml.sax.saxutils import escape
 
 from docx import Document
 
 from molehunt.channels.docx_meta import embed_docx_metadata
+from molehunt.channels.printdots import ROWS, DotMetadata, encode_dot_grid
+from molehunt.core.keys import digest
 from molehunt.core.slots import Slot, bits_in_source_order
 from molehunt.core.template import Template
 
@@ -37,3 +41,52 @@ def render_docx(
     output = BytesIO()
     document.save(output)
     return embed_docx_metadata(output.getvalue(), key, employee_id)
+
+
+def pdf_dot_metadata(key: bytes, employee_id: str, issued: datetime) -> DotMetadata:
+    """C7 payload for a PDF copy: keyed 8-bit station id, issue date, issue minute."""
+    station = digest(key, "pdf-dots", employee_id)[0]
+    return DotMetadata(station, issued.date(), issued.hour * 60 + issued.minute)
+
+
+def render_pdf(
+    template: Template,
+    slots: Sequence[Slot],
+    codeword: Sequence[int],
+    metadata: DotMetadata,
+    *,
+    cell: float = 4.0,
+) -> bytes:
+    """Typeset the copy with reportlab and tile faint yellow C7 dot grids per page.
+
+    The 8x15 grid (row/column parity) repeats in the top and bottom margins of
+    every page, so a crop of one tile or a photo of part of a page still carries it.
+    """
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.styles import getSampleStyleSheet
+    from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer
+
+    matrix = encode_dot_grid(metadata)
+    width, height = A4
+
+    def dots(canvas, _document) -> None:
+        canvas.saveState()
+        canvas.setFillColorRGB(0.95, 0.83, 0.0)
+        for y_top in (height - 20, 20 + ROWS * cell):
+            for x0 in range(24, int(width) - 80, 140):
+                for row, values in enumerate(matrix):
+                    for column, bit in enumerate(values):
+                        if bit:
+                            canvas.circle(x0 + column * cell, y_top - row * cell, 0.7,
+                                          stroke=0, fill=1)
+        canvas.restoreState()
+
+    styles = getSampleStyleSheet()
+    story = []
+    for line in render_text(template, slots, codeword).split("\n"):
+        story.append(Paragraph(escape(line), styles["BodyText"]) if line.strip()
+                     else Spacer(1, 6))
+    output = BytesIO()
+    SimpleDocTemplate(output, pagesize=A4, topMargin=60, bottomMargin=60).build(
+        story, onFirstPage=dots, onLaterPages=dots)
+    return output.getvalue()

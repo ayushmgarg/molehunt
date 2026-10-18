@@ -1,12 +1,15 @@
-# Explain: rendering
+# Explain: rendering issued copies
 
-The renderer receives a parsed template, its keyed slot map, and an employee codeword.
-`bits_in_source_order` maps private code positions back to authored positions.
-The template then chooses the left or right variant for each slot.
+Text: every slot shows the variant chosen by the employee's codeword bit (bit 0 =
+left variant, bit 1 = right), mapped from keyed codeword order back to reading order.
 
-Text exports are UTF-8. DOCX exports create one paragraph per source line, then apply
-the keyed OOXML metadata channel. This first renderer keeps text and slot selection
-simple; richer Markdown formatting and PDF output are separate future work.
+DOCX: the text as paragraphs, then C6 metadata (keyed rsidRoot and run rsids,
+run splits, a custom property) is patched into the OOXML package.
 
-Worked example: codeword `[0, 1]` with source slots indexed `[1, 0]` maps to source
-bits `[1, 0]`, so the first choice uses its right variant and the second its left.
+PDF: the text typeset with reportlab, plus faint yellow C7 dot grids tiled in the
+top and bottom margins of every page. Payload = (station id, issue date, issue
+minute) where station id = first byte of HMAC(K, "pdf-dots", employee). A photo or
+photocopy of any part of a margin carries a full parity-checked grid.
+
+Worked example: E001 issued 2025-03-04 13:45 UTC -> grid encodes station
+HMAC-byte, day 1889 since 2020-01-01, minute 825.

@@ -5,12 +5,13 @@ from __future__ import annotations
 import hashlib
 import sqlite3
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from pathlib import Path
 
 from molehunt.core.autoslots import master_title, prepare_master
 from molehunt.core.codes import generate_codewords
 from molehunt.core.keys import KEY_BYTES
-from molehunt.core.render import render_docx, render_text
+from molehunt.core.render import pdf_dot_metadata, render_docx, render_pdf, render_text
 from molehunt.core.tardos import generate_tardos_biases, generate_tardos_codeword
 from molehunt.registry import (
     add_employee,
@@ -92,12 +93,15 @@ def issue_registered_copy(
     else:
         raise ValueError("code must be 'single' or 'tardos'")
     output = Path(output_path)
-    if output.suffix.casefold() == ".docx":
+    if output.suffix.casefold() == ".pdf":
+        content = render_pdf(template, slots, bits,
+                             pdf_dot_metadata(key, employee_id, datetime.now(UTC)))
+    elif output.suffix.casefold() == ".docx":
         content = render_docx(template, slots, bits, key, employee_id)
     elif output.suffix.casefold() in {".txt", ".md"}:
         content = render_text(template, slots, bits).encode("utf-8")
     else:
-        raise ValueError("output file must use .txt, .md, or .docx")
+        raise ValueError("output file must use .txt, .md, .docx, or .pdf")
     if output.exists():
         raise FileExistsError(f"copy output already exists: {output}")
     add_employee(database_path, employee_id)

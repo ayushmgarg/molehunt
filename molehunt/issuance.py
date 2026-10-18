@@ -7,11 +7,10 @@ import sqlite3
 from dataclasses import dataclass
 from pathlib import Path
 
+from molehunt.core.autoslots import master_title, prepare_master
 from molehunt.core.codes import generate_codewords
 from molehunt.core.keys import KEY_BYTES
 from molehunt.core.render import render_docx, render_text
-from molehunt.core.slots import allocate_slots
-from molehunt.core.template import parse_template
 from molehunt.registry import (
     add_employee,
     get_master,
@@ -46,10 +45,9 @@ def register_master_file(
         raise ValueError(f"key must contain {KEY_BYTES} bytes")
     path = Path(master_path)
     source = path.read_text(encoding="utf-8")
-    template = parse_template(source)
-    slots = allocate_slots(template, key)
+    slots = prepare_master(source, key).slots
     registry_id = master_id or path.stem
-    registry_title = title or path.stem.replace("_", " ").title()
+    registry_title = title or master_title(source) or path.stem.replace("_", " ").title()
     initialize_database(database)
     register_master(database, registry_id, registry_title, path, source, slots)
     return len(slots)
@@ -82,8 +80,8 @@ def issue_registered_copy(
     source = source_path.read_text(encoding="utf-8")
     if hashlib.sha256(source.encode("utf-8")).hexdigest() != record["sha256"]:
         raise ValueError("registered master changed after registration")
-    template = parse_template(source)
-    slots = allocate_slots(template, key)
+    prepared = prepare_master(source, key)
+    template, slots = prepared.template, prepared.slots
     bits = generate_codewords(key, [employee_id], len(slots))[employee_id]
     output = Path(output_path)
     if output.suffix.casefold() == ".docx":

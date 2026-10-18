@@ -8,6 +8,7 @@ from pathlib import Path
 
 from PySide6.QtWidgets import QTableWidgetItem
 
+from molehunt.core.autoslots import split_front_matter
 from molehunt.core.template import parse_template
 from molehunt.detect.ingest import ingest
 
@@ -31,7 +32,7 @@ class MasterComparison:
 
 def compare_master(master_source: str, evidence_text: str) -> MasterComparison:
     """Render A variants, align lines with SequenceMatcher, and retain A/B choices."""
-    template = parse_template(master_source)
+    template = parse_template(split_front_matter(master_source)[1])
     canonical = template.render([0] * len(template.choices))
     master_lines = canonical.splitlines()
     evidence_lines = evidence_text.splitlines()

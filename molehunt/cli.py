@@ -9,20 +9,16 @@ from typing import Annotated
 import typer
 
 from molehunt import __version__
+from molehunt.analysis import analyze_text
 from molehunt.attacks.harness import run_text_benchmark, write_benchmark
 from molehunt.attacks.transform import attack_text
 from molehunt.channels.suggest import suggest_slots as find_slot_suggestions
-from molehunt.core.codes import generate_codewords
+from molehunt.core.autoslots import prepare_master
 from molehunt.core.keys import KEY_BYTES, load_or_create_key
-from molehunt.core.slots import allocate_slots
-from molehunt.core.template import parse_template
 from molehunt.custody import append_custody_entry, sha256_file, verify_custody
-from molehunt.detect.align import align_to_master
-from molehunt.detect.extract import extract_variants
 from molehunt.detect.fuse import fuse_scores
 from molehunt.detect.ingest import ingest
 from molehunt.detect.logs import read_fusion_logs
-from molehunt.detect.score import score_candidates
 from molehunt.intake_service import intake_case
 from molehunt.issuance import issue_registered_copy, register_master_file
 from molehunt.registry import (
@@ -204,14 +200,8 @@ def analyze(
         evidence_record = ingest(evidence)
         if evidence_record.text is None:
             raise ValueError("PNG dot metadata is available; text OCR is not implemented")
-        template = parse_template(source)
-        slots = allocate_slots(template, key)
-        codewords = generate_codewords(key, employee_ids, len(slots))
-        windows = align_to_master(template, slots, evidence_record.text)
-        extracted = extract_variants(evidence_record.text, windows)
-        by_index = {item.slot_index: item.bit for item in extracted}
-        observations = [by_index[index] for index in range(len(slots))]
-        scores = score_candidates(observations, codewords, flip_rate=flip_rate)
+        result = analyze_text(source, key, employee_ids, evidence_record.text, flip_rate=flip_rate)
+        slots, observations, scores = result.prepared.slots, result.observations, result.scores
         fused_scores = None
         if logs is not None:
             log_evidence = read_fusion_logs(logs, set(employee_ids))
@@ -303,8 +293,8 @@ def bench(
         key = key_file.read_bytes()
         if len(key) != KEY_BYTES:
             raise ValueError(f"key file must contain {KEY_BYTES} bytes")
-        template = parse_template(master.read_text(encoding="utf-8"))
-        slots = allocate_slots(template, key)
+        prepared = prepare_master(master.read_text(encoding="utf-8"), key)
+        template, slots = prepared.template, prepared.slots
         employee_ids = _read_employee_ids(employees)
         attack_ids = [value.strip() for value in attacks.split(",") if value.strip()]
         strength_values = [float(value.strip()) for value in strengths.split(",")]

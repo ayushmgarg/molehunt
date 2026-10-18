@@ -9,17 +9,14 @@ from pathlib import Path
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QTableWidgetItem
 
+from molehunt.analysis import analyze_text
 from molehunt.attacks.harness import run_text_benchmark, write_benchmark
-from molehunt.core.codes import generate_codewords
+from molehunt.core.autoslots import prepare_master
 from molehunt.core.keys import KEY_BYTES
-from molehunt.core.slots import allocate_slots
-from molehunt.core.template import parse_template
-from molehunt.detect.align import align_to_master
-from molehunt.detect.extract import extract_variants
 from molehunt.detect.fuse import FusedScore, fuse_scores
 from molehunt.detect.ingest import IngestedEvidence, ingest
 from molehunt.detect.logs import read_fusion_logs
-from molehunt.detect.score import CandidateScore, score_candidates
+from molehunt.detect.score import CandidateScore
 from molehunt.report import write_analysis_report
 
 
@@ -62,22 +59,15 @@ def _analyze_inputs(
 ) -> AnalysisBundle:
     """Read, align, extract and score evidence without touching Qt widgets."""
     key = _key(key_path)
-    template = parse_template(master_path.read_text(encoding="utf-8"))
-    slots = allocate_slots(template, key)
     employee_ids = _employee_ids(roster_path)
     evidence = ingest(evidence_path)
     if evidence.text is None:
         raise ValueError("PNG text OCR is unavailable")
-    extracted = extract_variants(
-        evidence.text, align_to_master(template, slots, evidence.text)
+    result = analyze_text(
+        master_path.read_text(encoding="utf-8"), key, employee_ids, evidence.text
     )
-    by_index = {item.slot_index: item.bit for item in extracted}
-    observations = tuple(by_index[index] for index in range(len(slots)))
-    codewords = {
-        employee_id: tuple(bits)
-        for employee_id, bits in generate_codewords(key, employee_ids, len(slots)).items()
-    }
-    scores = score_candidates(observations, codewords)
+    slots, observations = result.prepared.slots, result.observations
+    codewords, scores = result.codewords, result.scores
     fused_scores = None
     if logs_path is not None:
         log_evidence = read_fusion_logs(logs_path, set(employee_ids))
@@ -93,11 +83,10 @@ def _benchmark_inputs(
 ) -> tuple[float, dict[str, Path]]:
     """Run the workbench's seeded attack set and persist its result artifacts."""
     key = _key(key_path)
-    template = parse_template(master_path.read_text(encoding="utf-8"))
+    prepared = prepare_master(master_path.read_text(encoding="utf-8"), key)
     roster = _employee_ids(roster_path)
-    slots = allocate_slots(template, key)
     rows = run_text_benchmark(
-        template, slots, key, roster,
+        prepared.template, prepared.slots, key, roster,
         attack_ids=("A1", "A3", "A8"), strengths=(0, 0.5, 1), seeds=(0,),
     )
     artifacts = write_benchmark(rows, output_path)

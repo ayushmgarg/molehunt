@@ -3,7 +3,7 @@ title: The Invisible Copy
 brief: A short internal memo appeared outside its intended team. Begin with the file itself.
 objective: Identify the fingerprinted copy and explain which hidden text evidence supports it.
 generator: invisible_copy
-master: data/demo/master.md
+master: data/masters/m1_roadmap.md
 seed_offset: 101
 tools: [intake, hex, invisible, notes, report]
 hints:

@@ -19,7 +19,6 @@ from molehunt.game.generator import generate_case
 from molehunt.game.tools import document_order_bits, match_registry, read_registry
 from molehunt.game.validator import Procedure, Submission, grade_case, parse_details
 
-MASTER = "data/demo/master.md"
 CASES = {definition.generator: definition for definition in load_casebook()}
 CLEAN = Procedure(hashed=True, working_copy=True, notes=True, original_untouched=True)
 
@@ -97,8 +96,7 @@ def solve(kind: str, public: Path) -> Submission:
 def test_case_is_solvable_with_full_marks_and_wrong_answer_gets_no_finding(
     kind: str, tmp_path: Path
 ) -> None:
-    master = None if kind == "collusion" else MASTER
-    instance = generate_case(CASES[kind], tmp_path / kind, seed=7, master_path=master)
+    instance = generate_case(CASES[kind], tmp_path / kind, seed=7)
     source = split_front_matter(instance.master_path.read_text(encoding="utf-8"))[1]
     TEMPLATE["current"] = parse_template(source)
     truth = json.loads(instance.ground_truth_path.read_text(encoding="utf-8"))

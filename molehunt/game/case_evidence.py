@@ -59,7 +59,7 @@ def rewrite_slots(
         early_conflict = agreed < tie_slots and leaker_bits[slot] != twin_bits[slot]
         if early_conflict or rng.random() < extra_rate:
             erased.append(slot)
-            out.append(THIRD_WORD.get(chosen.casefold(), "the"))
+            out.append(THIRD_WORD.get(chosen.casefold(), "[...]"))
         else:
             agreed += 1
             out.append(chosen)

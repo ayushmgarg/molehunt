@@ -3,7 +3,7 @@ title: The Edited Draft
 brief: A leaked draft has been revised in several places, but its wording still carries traces.
 objective: Compare the draft with the master and use surviving variation slots to rank copies.
 generator: edited_text
-master: data/demo/master.md
+master: data/masters/m2_zoning.md
 seed_offset: 202
 tools: [diff, slot_matrix]
 hints:

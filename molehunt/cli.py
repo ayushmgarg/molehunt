@@ -1,6 +1,8 @@
 """Initial CLI for key setup and local leak analysis."""
 
 import csv
+import hashlib
+import sqlite3
 from pathlib import Path
 from typing import Annotated
 
@@ -19,6 +21,14 @@ from molehunt.detect.extract import extract_variants
 from molehunt.detect.ingest import ingest
 from molehunt.detect.score import score_candidates
 from molehunt.intake import intake_evidence
+from molehunt.registry import (
+    add_employee,
+    get_master,
+    get_master_by_path,
+    initialize_database,
+    record_copy,
+    register_master,
+)
 from molehunt.report import write_analysis_report
 
 app = typer.Typer(
@@ -28,6 +38,8 @@ app = typer.Typer(
 )
 custody_app = typer.Typer(help="Append and verify evidence custody entries.")
 app.add_typer(custody_app, name="custody")
+DEFAULT_DB = Path(".molehunt/molehunt.sqlite3")
+DEFAULT_CUSTODY_LOG = Path(".molehunt/custody.log")
 
 
 @app.command()
@@ -47,31 +59,81 @@ def serve() -> None:
 @app.command()
 def init(
     key_file: Annotated[Path, typer.Option("--key-file")] = Path(".molehunt/master.key"),
+    db_file: Annotated[Path, typer.Option("--db-file")] = DEFAULT_DB,
+    custody_log: Annotated[Path, typer.Option("--custody-log")] = DEFAULT_CUSTODY_LOG,
 ) -> None:
-    """Create or verify the local secret key file."""
+    """Create or verify the local key, SQLite registry, and custody log."""
     try:
         load_or_create_key(key_file)
-    except (OSError, ValueError) as error:
+        initialize_database(db_file)
+        custody_log.parent.mkdir(parents=True, exist_ok=True)
+        custody_log.touch(exist_ok=True)
+    except (OSError, ValueError, sqlite3.Error) as error:
         typer.echo(f"Error: {error}", err=True)
         raise typer.Exit(code=2) from error
     typer.echo(f"Key ready: {key_file} ({KEY_BYTES} bytes)")
+    typer.echo(f"Registry ready: {db_file}")
+    typer.echo(f"Custody log ready: {custody_log}")
+
+
+@app.command()
+def register(
+    master: Annotated[Path, typer.Argument(help="Variation-marked master document")],
+    master_id: Annotated[str | None, typer.Option("--master-id", help="Registry ID; defaults to filename")]
+    = None,
+    title: Annotated[str | None, typer.Option("--title", help="Human-readable synthetic master title")]
+    = None,
+    key_file: Annotated[Path, typer.Option("--key-file")] = Path(".molehunt/master.key"),
+    db_file: Annotated[Path, typer.Option("--db-file")] = DEFAULT_DB,
+) -> None:
+    """Register a master and its keyed slot map in the local SQLite registry."""
+    try:
+        key = key_file.read_bytes()
+        if len(key) != KEY_BYTES:
+            raise ValueError(f"key file must contain {KEY_BYTES} bytes")
+        source = master.read_text(encoding="utf-8")
+        parsed = parse_template(source)
+        slots = allocate_slots(parsed, key)
+        registry_id = master_id or master.stem
+        registry_title = title or master.stem.replace("_", " ").title()
+        initialize_database(db_file)
+        register_master(db_file, registry_id, registry_title, master, source, slots)
+    except (OSError, UnicodeError, ValueError, sqlite3.Error) as error:
+        typer.echo(f"Error: {error}", err=True)
+        raise typer.Exit(code=2) from error
+    typer.echo(f"Registered {registry_id}: {len(slots)} slots ({master})")
 
 
 @app.command()
 def issue(
     employee_id: Annotated[str, typer.Argument(help="Synthetic employee ID")],
-    master: Annotated[Path, typer.Option("--master", help="Variation-marked master document")],
+    master: Annotated[str, typer.Option("--master", help="Registered master ID or its registered path")],
     output: Annotated[Path, typer.Option("--output", "-o", help="Copy output path (.txt, .md, or .docx)")],
     key_file: Annotated[Path, typer.Option("--key-file")] = Path(".molehunt/master.key"),
+    db_file: Annotated[Path, typer.Option("--db-file")] = DEFAULT_DB,
 ) -> None:
-    """Issue a deterministic fingerprinted copy for a synthetic employee ID."""
+    """Issue and registry-record a deterministic fingerprinted copy."""
     try:
         if not employee_id.strip():
             raise ValueError("employee ID must not be empty")
         key = key_file.read_bytes()
         if len(key) != KEY_BYTES:
             raise ValueError(f"key file must contain {KEY_BYTES} bytes")
-        template = parse_template(master.read_text(encoding="utf-8"))
+        if not db_file.is_file():
+            raise ValueError("registry is not initialized; run molehunt init")
+        master_path = Path(master)
+        record = (
+            get_master_by_path(db_file, master_path)
+            if master_path.is_file()
+            else get_master(db_file, master)
+        )
+        if record is None:
+            raise ValueError("master is not registered; run molehunt register first")
+        master_path = Path(record["template_path"])
+        source = master_path.read_text(encoding="utf-8")
+        if hashlib.sha256(source.encode("utf-8")).hexdigest() != record["sha256"]:
+            raise ValueError("registered master changed after registration")
+        template = parse_template(source)
         slots = allocate_slots(template, key)
         codeword = generate_codewords(key, [employee_id], len(slots))[employee_id]
         if output.suffix.casefold() == ".docx":
@@ -80,13 +142,17 @@ def issue(
             content = render_text(template, slots, codeword).encode("utf-8")
         else:
             raise ValueError("output file must use .txt, .md, or .docx")
+        add_employee(db_file, employee_id)
         output.parent.mkdir(parents=True, exist_ok=True)
         output.write_bytes(content)
-    except (OSError, UnicodeError, ValueError) as error:
+        copy_id = record_copy(db_file, record["id"], employee_id, output)
+    except (OSError, UnicodeError, ValueError, sqlite3.Error) as error:
         typer.echo(f"Error: {error}", err=True)
         raise typer.Exit(code=2) from error
 
-    typer.echo(f"Issued copy for {employee_id}: {output} ({len(slots)} slots)")
+    typer.echo(
+        f"Issued copy {copy_id} for {employee_id}: {output} ({len(slots)} slots)"
+    )
 
 
 def _read_employee_ids(path: Path) -> list[str]:

@@ -20,11 +20,12 @@ Try the current workflow with the bundled synthetic master and roster. Create a 
 
 ```powershell
 uv run molehunt init
-uv run molehunt issue E007 --master data/demo/master.md --output data/demo/issued/E007.txt
+uv run molehunt register data/demo/master.md --master-id demo-master
+uv run molehunt issue E007 --master demo-master --output data/demo/issued/E007.txt
 uv run molehunt analyze data/demo/issued/E007.txt --master data/demo/master.md --employees data/demo/employees.csv --report reports/generated/E007.docx
 uv run molehunt bench --master data/demo/master.md --employees data/demo/employees.csv --attacks A1,A3,A8 --strengths 0,0.5,1 --seeds 0,1
 ```
 
-`issue` accepts `.txt`, `.md`, or `.docx` output. The analyzer reports a ranking and LR; it does not make a final accusation until a decision threshold has been calibrated. `bench` writes run and channel-survival CSV files and plots under `bench/` by default.
+`init` creates the local key, SQLite registry, and custody log. `register` stores a master and its keyed slot map; `issue` accepts a registered master ID or path and records the synthetic employee and issued copy. Issue output accepts `.txt`, `.md`, or `.docx`. The analyzer reports a ranking and LR; it does not make a final accusation until a decision threshold has been calibrated. `bench` writes run and channel-survival CSV files and plots under `bench/` by default.
 
 Only generated synthetic people, documents, and logs belong in this repository. No network or scanning features are in scope.

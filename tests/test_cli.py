@@ -1,5 +1,7 @@
 """Tests for the initial command-line engine workflow."""
 
+import hashlib
+import sqlite3
 from pathlib import Path
 
 from typer.testing import CliRunner
@@ -15,10 +17,22 @@ runner = CliRunner()
 
 def test_init_creates_key_without_printing_secret(tmp_path: Path) -> None:
     key_path = tmp_path / "private" / "master.key"
-    result = runner.invoke(app, ["init", "--key-file", str(key_path)])
+    db_path = tmp_path / "private" / "registry.sqlite3"
+    custody_path = tmp_path / "private" / "custody.log"
+    result = runner.invoke(
+        app,
+        [
+            "init", "--key-file", str(key_path), "--db-file", str(db_path),
+            "--custody-log", str(custody_path),
+        ],
+    )
     assert result.exit_code == 0
     assert key_path.read_bytes() and len(key_path.read_bytes()) == 32
     assert key_path.read_bytes().hex() not in result.stdout
+    assert custody_path.is_file()
+    with sqlite3.connect(db_path) as connection:
+        tables = {row[0] for row in connection.execute("SELECT name FROM sqlite_master")}
+    assert {"masters", "slots", "employees", "copies", "cases"} <= tables
 
 
 def test_analyze_ranks_clean_rendered_copy(tmp_path: Path) -> None:
@@ -81,12 +95,20 @@ def test_issue_creates_copy_that_analyze_identifies(tmp_path: Path) -> None:
     roster_path = tmp_path / "employees.csv"
     roster_path.write_text("id\nE001\nE002\nE003\n", encoding="utf-8")
     copy_path = tmp_path / "issued.txt"
+    db_path = tmp_path / "registry.sqlite3"
+
+    registered = runner.invoke(
+        app,
+        ["register", str(master_path), "--master-id", "M1", "--key-file", str(key_path),
+         "--db-file", str(db_path)],
+    )
+    assert registered.exit_code == 0, registered.stdout
 
     issued = runner.invoke(
         app,
         [
-            "issue", "E002", "--master", str(master_path), "--key-file", str(key_path),
-            "--output", str(copy_path),
+            "issue", "E002", "--master", "M1", "--key-file", str(key_path),
+            "--db-file", str(db_path), "--output", str(copy_path),
         ],
     )
     assert issued.exit_code == 0, issued.stdout
@@ -105,6 +127,62 @@ def test_issue_creates_copy_that_analyze_identifies(tmp_path: Path) -> None:
         if line.startswith(("E001", "E002", "E003"))
     )
     assert first_candidate == "E002"
+    with sqlite3.connect(db_path) as connection:
+        employee = connection.execute("SELECT id FROM employees").fetchone()
+        copy = connection.execute(
+            "SELECT master_id, employee_id, format, sha256, path FROM copies"
+        ).fetchone()
+    assert employee == ("E002",)
+    assert copy == (
+        "M1", "E002", "txt", hashlib.sha256(copy_path.read_bytes()).hexdigest(),
+        str(copy_path.resolve()),
+    )
+
+
+def test_register_rejects_duplicate_master_id_cleanly(tmp_path: Path) -> None:
+    key_path = tmp_path / "master.key"
+    key_path.write_bytes(bytes(range(32)))
+    master_path = tmp_path / "master.md"
+    master_path.write_text("A {{lex:begin|start}} phrase.", encoding="utf-8")
+    db_path = tmp_path / "registry.sqlite3"
+    args = ["register", str(master_path), "--master-id", "M1", "--key-file", str(key_path),
+            "--db-file", str(db_path)]
+    first = runner.invoke(app, args)
+    second = runner.invoke(app, args)
+    assert first.exit_code == 0, first.stdout
+    assert second.exit_code == 2
+    assert "UNIQUE constraint failed" in second.stderr
+
+
+def test_issue_rejects_unregistered_or_changed_master(tmp_path: Path) -> None:
+    key_path = tmp_path / "master.key"
+    key_path.write_bytes(bytes(range(32)))
+    master_path = tmp_path / "master.md"
+    master_path.write_text("A {{lex:begin|start}} phrase.", encoding="utf-8")
+    db_path = tmp_path / "registry.sqlite3"
+    output_path = tmp_path / "issued.txt"
+    initialized = runner.invoke(
+        app,
+        ["init", "--key-file", str(key_path), "--db-file", str(db_path),
+         "--custody-log", str(tmp_path / "custody.log")],
+    )
+    assert initialized.exit_code == 0, initialized.stdout
+    common = ["issue", "E001", "--key-file", str(key_path), "--db-file", str(db_path),
+              "--output", str(output_path)]
+    missing = runner.invoke(app, [*common, "--master", "MISSING"])
+    assert missing.exit_code == 2
+    assert "not registered" in missing.stderr
+    registered = runner.invoke(
+        app,
+        ["register", str(master_path), "--master-id", "M1", "--key-file", str(key_path),
+         "--db-file", str(db_path)],
+    )
+    assert registered.exit_code == 0, registered.stdout
+    master_path.write_text("Changed after registration.", encoding="utf-8")
+    changed = runner.invoke(app, [*common, "--master", "M1"])
+    assert changed.exit_code == 2
+    assert "changed after registration" in changed.stderr
+    assert not output_path.exists()
 
 
 def test_analyze_rejects_roster_without_id_column(tmp_path: Path) -> None:

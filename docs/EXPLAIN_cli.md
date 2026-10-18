@@ -1,8 +1,12 @@
 # Explain: analysis CLI
 
-`init` creates the local 32-byte key file without printing its contents.
-`issue` derives a codeword from the key and synthetic employee ID, then renders a text
-or DOCX copy using the master template's keyed slot map.
+`init` creates the local 32-byte key file, SQLite registry, and custody log without
+printing the key contents.
+`register` parses a master, derives its keyed slot map, and stores the master digest and
+slot anchors in SQLite. Reusing an ID fails instead of replacing that record.
+`issue` accepts a registered master ID or path, checks the stored SHA-256, then derives
+a codeword from the key and synthetic employee ID. It renders a text, Markdown, or DOCX
+copy and records its hash, path, format, master, and synthetic employee in SQLite.
 `analyze` reads a master template, CSV roster IDs, and evidence; then calls the same
 parse, slot, align, extract, and score functions used by the library.
 `bench` renders synthetic copies, runs the selected attacks, then records rankings,
@@ -19,7 +23,8 @@ The printed ranking is not a final accusation. Its threshold stays unset until t
 benchmark measures an error rate. PNG input currently reports C7 metadata only; OCR is
 not implemented.
 
-Worked run: initialize once, then pass the leak path, `--master`, and `--employees`.
+Worked run: initialize once, register the master, then issue by registry ID. For analysis,
+pass the leak path, source master path, and `--employees` roster.
 The report begins with the raw evidence SHA-256 for traceability.
 Worked benchmark: pass a synthetic template and roster to `bench --attacks A1,A3
 --strengths 0,1 --seeds 7`; it creates `results/` and `plots/` under the output folder.

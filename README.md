@@ -34,13 +34,16 @@ uv run pytest -q
 uv run molehunt init
 uv run molehunt roster --count 50 -o data/demo/roster50.csv
 uv run molehunt register data/masters/m1_roadmap.md --master-id M1
-uv run molehunt issue --master M1 --employees data/demo/roster50.csv --format txt,docx,pdf
+uv run molehunt issue --master M1 --employees data/demo/roster50.csv --format txt,docx,pdf,png
 uv run molehunt attack --name A5 --strength 1 data/demo/issued/E007.txt -o reports/generated/leak.txt
 uv run molehunt intake reports/generated/leak.txt C-001 --actor EX-01
 uv run molehunt analyze reports/generated/leak.txt --master data/masters/m1_roadmap.md --employees data/demo/roster50.csv
 uv run molehunt report --case C-001 -o reports/generated/C-001.docx --master data/masters/m1_roadmap.md --employees data/demo/roster50.csv --examiner EX-01
 uv run molehunt custody demo
 ```
+
+Evidence can be .txt, .md, .docx, or a .png/.jpg scan of a printed copy (read
+with a classical, non-ML template OCR; see `docs/EXPLAIN_ocr.md`).
 
 `analyze` prints the ranking (matches, z, binomial p, log10 LR) and a finding:
 `attribute` (with the ENFSI-style verbal scale), `cannot distinguish`, or
@@ -77,6 +80,7 @@ scrub it (or print the PDF and photograph it), then upload it on the same page.
 The host's `/board` page (put it on the projector) refreshes every 3 seconds with
 the hash, custody entry, ranking, and finding for each leak. Allow Python through
 the Windows firewall when asked. This is the only network feature; it is opt-in.
+Step-by-step test: `docs/LIVE_DEMO.md`.
 
 ## Benchmark
 
@@ -113,7 +117,7 @@ molehunt/detect    ingest, align, extract, score, decide, tardos, fuse, logs
 molehunt/attacks   transform (A1-A11), collusion (A12), harness, bench_artifacts, collusion_bench
 molehunt/game      casebook, generator, case_evidence, tools, validator, leaderboard, redteam, cases/*.yaml
 molehunt/ui        PySide6 workbench
-data/masters       three synthetic masters (650-815 words, 262-267 slots each)
+data/masters       three benchmark masters (650-815 words, 262-267 slots) + cases/ four case masters
 docs               SPEC overrides, DECISIONS, EXPLAIN_<module> viva notes, VALIDATION, BENCHMARK, PLAN_AUDIT
 ```
 

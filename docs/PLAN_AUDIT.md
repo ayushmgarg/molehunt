@@ -12,7 +12,7 @@ deliverable (report, slides, rehearsal); **Changed** = replaced by a logged deci
 | P0.1 | Python 3.11, venv | Done | Done | `requires-python`, `uv.lock` |
 | P0.2 | AGENTS.md, SPEC.md | Done | Done | |
 | P0.3 | Makefile test/bench/serve/lint | Partial (`make bench` broke) | Done | `bench` runs the protocol with no arguments |
-| P0.4 | 3 masters 600-900 words; 7 by P7 | Missing | Partial | `data/masters/m1..m3` (647-814 words, 262-267 slots, C4/C5 >= 60 each, `tests/test_masters.py`); the demo master still serves Cases 3 and 5 |
+| P0.4 | 3 masters 600-900 words; 7 by P7 | Missing | Done | `data/masters/m1..m3` (647-814 words, 262-267 slots) + `data/masters/cases/m4..m7`; every case uses a story master |
 | P0.5 | Roster + log generator | Missing | Done | `game/logs_gen.py`, `molehunt roster` |
 
 ## P1 Core
@@ -35,7 +35,7 @@ deliverable (report, slides, rehearsal); **Changed** = replaced by a logged deci
 
 | ID | Item | Before | Now | Evidence |
 |---|---|---|---|---|
-| P3.1-P3.3 | ingest, align, extract | Done | Done | align now skeletonises both sides, uses token anchors and an anchor-context check (no anchor = erasure) |
+| P3.1-P3.3 | ingest (incl. PNG/JPG via classical OCR), align, extract | Done | Done | align now skeletonises both sides, uses token anchors and an anchor-context check (no anchor = erasure) |
 | P3.4 | decision rule, cannot distinguish, verbal scale | Partial | Done | `detect/decide.py` (Bonferroni alpha/N + LR margin, ENFSI scale) |
 | P3.5 | Tardos threshold by simulation | Partial | Done | `calibrate_threshold`, `analyze --collusion` |
 | P3.6 | fusion | Done | Done | |
@@ -67,7 +67,7 @@ deliverable (report, slides, rehearsal); **Changed** = replaced by a logged deci
 | P6.1, P6.2, P6.4 | evidence tree, hex, diff, slot matrix | Done | Done | |
 | P6.3 | revealer + bit decoder | Partial | Done | bit meaning column and C1 bit string |
 | P6.5 | OOXML explorer + rsid table | Missing | Done | `ui/ooxml_view.py`, Lab panel |
-| P6.6 | timeline, notes, report button | Partial | Done | notes panel, "Report with notes" |
+| P6.6 | timeline (filter, brush, pin), notes, report button | Partial | Done | brush selects a time window; notes panel, "Report with notes" |
 | P6.7 | image dot analyzer | Missing | Done | Lab panel with mask preview |
 
 ## P7 Casebook
@@ -100,4 +100,5 @@ deliverable (report, slides, rehearsal); **Changed** = replaced by a logged deci
 - Rule 9: every module is under 300 lines (`cli.py` was 442; now split).
 - Rule 4: robustness numbers appear only in `docs/BENCHMARK.md`, copied from `bench/results`.
 - Rule 6: the detector never imports `game/`; validator reads only `ground_truth.json`.
-- Rule 7: no network code. A live two-laptop demo would need a decision (see the session notes).
+- Rule 7: one approved exception, the opt-in `molehunt live` LAN demo (logged in DECISIONS.md).
+- No ML anywhere: statistics, HMAC, template matching. OCR is template matching, not Tesseract (an LSTM network).

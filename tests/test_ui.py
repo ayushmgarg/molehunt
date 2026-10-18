@@ -4,6 +4,7 @@ import os
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
+from PySide6.QtCore import QEventLoop, QTimer
 from PySide6.QtWidgets import QApplication
 
 from molehunt.core.codes import generate_codeword
@@ -53,6 +54,13 @@ def test_workbench_analysis_populates_candidate_slot_matrix(tmp_path) -> None:
     fields["employees"].setText(str(roster_path))
     fields["key"].setText(str(key_path))
     window._analyze()
+    assert window.status.text() == "Working…"
+    assert not window.centralWidget().isEnabled()
+    completed = QEventLoop()
+    window._thread.finished.connect(completed.quit)
+    QTimer.singleShot(10000, completed.quit)
+    completed.exec()
+    application.processEvents()
 
     assert window.status.text().startswith("Analysis complete")
     assert window.slot_matrix.columnCount() == 65

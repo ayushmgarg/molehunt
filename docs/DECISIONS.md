@@ -10,3 +10,7 @@
 ## Channel C2
 
 - Trailing-space slots encode one versus two ASCII spaces. This preserves an observable value for both bits; if normalization removes the run, extraction returns an erasure.
+
+## Channel C5
+
+- Number-format pairs must retain the same digits when comma, dot, ordinary space, and NBSP grouping marks are removed. Human review remains required for the intended locale and meaning.

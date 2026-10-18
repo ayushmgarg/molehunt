@@ -13,13 +13,15 @@ from PySide6.QtWidgets import (
     QLabel,
     QLineEdit,
     QPushButton,
-    QSpinBox,
     QTableWidget,
     QTabWidget,
     QTextEdit,
     QVBoxLayout,
     QWidget,
 )
+
+from molehunt.ui.evidence_page import build_evidence_page
+from molehunt.ui.redteam_panel import build_redteam_panel
 
 _STYLE = """
 QMainWindow, QWidget { background: #14171A; color: #EFE9DC; font-family: "Segoe UI", Arial, sans-serif; font-size: 14px; }
@@ -156,6 +158,7 @@ def build_pages(owner) -> QTabWidget:
             form.addRow("", verify)
         elif name == "bench":
             page.layout().addWidget(QLabel("Seeded transforms; output includes CSV and PNG plots."))
+            build_redteam_panel(owner, page.layout())
         tabs.addTab(page, title)
 
     casebook, case_form, case_fields = _form_page(owner, "casebook")
@@ -201,96 +204,15 @@ def build_pages(owner) -> QTabWidget:
     submit.clicked.connect(owner._casebook_submit)
     answer_row.addWidget(submit)
     casebook.layout().addLayout(answer_row)
+    case_fields["details"] = QLineEdit()
+    case_fields["details"].setPlaceholderText(
+        "Evidence details: bits=0101...; erased=3,7; pool=E001,E004; ranking=rsid,...; "
+        "tied=E002,E005; actor=E003; alternative=...")
+    casebook.layout().addWidget(case_fields["details"])
     owner.case_selector.currentIndexChanged.connect(owner._casebook_show_selected)
     tabs.addTab(casebook, "Casebook")
 
-    forensic, form, fields = _form_page(owner, "forensics")
-    _add_field(form, fields, "database", "SQLite registry", ".molehunt/molehunt.sqlite3")
-    _add_field(form, fields, "evidence", "Evidence file", "")
-    _add_field(form, fields, "timeline_paths", "Timestamped timeline CSVs (; separated)", "")
-    owner.timeline_paths = fields["timeline_paths"]
-    evidence_actions = QHBoxLayout()
-    refresh_evidence = QPushButton("Refresh evidence tree")
-    owner.evidence_refresh_button = refresh_evidence
-    refresh_evidence.clicked.connect(owner._evidence_refresh)
-    inspect_evidence = QPushButton("Inspect selected file")
-    owner.inspect_evidence_button = inspect_evidence
-    inspect_evidence.clicked.connect(owner._forensics_inspect)
-    diff_evidence = QPushButton("Diff against selected master")
-    owner.diff_evidence_button = diff_evidence
-    diff_evidence.clicked.connect(owner._diff)
-    evidence_actions.addWidget(refresh_evidence)
-    evidence_actions.addWidget(inspect_evidence)
-    evidence_actions.addWidget(diff_evidence)
-    form.addRow("", evidence_actions)
-    owner.evidence_tree = QTableWidget(0, 6)
-    owner.evidence_tree.setHorizontalHeaderLabels(
-        ["Evidence ID", "Case", "SHA-256", "Intake UTC", "Original", "Working copy"]
-    )
-    owner.evidence_tree.horizontalHeader().setStretchLastSection(True)
-    owner.evidence_tree.setMaximumHeight(150)
-    owner.evidence_tree.cellClicked.connect(owner._evidence_tree_selected)
-    forensic.layout().addWidget(owner.evidence_tree)
-    offset_row = QHBoxLayout()
-    offset_row.addWidget(QLabel("Byte offset"))
-    owner.hex_offset = QSpinBox()
-    owner.hex_offset.setRange(0, 2_147_483_647)
-    owner.hex_offset.setValue(0)
-    offset_row.addWidget(owner.hex_offset)
-    offset_row.addWidget(QLabel("Select the corresponding hex byte to inspect its UTF-8 scalar."))
-    forensic.layout().addLayout(offset_row)
-    owner.hex_table = QTableWidget(0, 18)
-    owner.hex_table.setHorizontalHeaderLabels(
-        ["Offset", *(f"{index:02X}" for index in range(16)), "ASCII"]
-    )
-    owner.hex_table.horizontalHeader().setStretchLastSection(True)
-    owner.hex_table.cellClicked.connect(owner._hex_byte_selected)
-    forensic.layout().addWidget(owner.hex_table)
-    owner.byte_detail = QLabel("Select a byte to show its decoded character, if valid UTF-8.")
-    forensic.layout().addWidget(owner.byte_detail)
-    owner.invisible_table = QTableWidget(0, 6)
-    owner.invisible_table.setHorizontalHeaderLabels(
-        ["Character offset", "Code point", "Unicode name", "Category", "UTF-8 bytes", "Character"]
-    )
-    owner.invisible_table.horizontalHeader().setStretchLastSection(True)
-    owner.invisible_label = QLabel("Non-printing characters in decoded text")
-    forensic.layout().addWidget(owner.invisible_label)
-    forensic.layout().addWidget(owner.invisible_table)
-    owner.diff_table = QTableWidget(0, 3)
-    owner.diff_table.setHorizontalHeaderLabels(["Change", "Master", "Evidence"])
-    owner.diff_table.horizontalHeader().setStretchLastSection(True)
-    owner.diff_label = QLabel("Master diff; variation slots render as variant A.")
-    forensic.layout().addWidget(owner.diff_label)
-    forensic.layout().addWidget(owner.diff_table)
-    owner.diff_variations = QTextEdit()
-    owner.diff_variations.setReadOnly(True)
-    owner.diff_variations.setMaximumHeight(90)
-    forensic.layout().addWidget(owner.diff_variations)
-    timeline_actions = QHBoxLayout()
-    owner.timeline_load_button = QPushButton("Load timeline")
-    owner.timeline_load_button.clicked.connect(owner._timeline_load)
-    timeline_actions.addWidget(owner.timeline_load_button)
-    timeline_actions.addWidget(QLabel("Filter events"))
-    owner.timeline_filter = QLineEdit()
-    owner.timeline_filter.textChanged.connect(owner._timeline_filter)
-    timeline_actions.addWidget(owner.timeline_filter, 1)
-    owner.timeline_pin_button = QPushButton("Pin selected event")
-    owner.timeline_pin_button.clicked.connect(owner._timeline_pin_selected)
-    timeline_actions.addWidget(owner.timeline_pin_button)
-    forensic.layout().addLayout(timeline_actions)
-    owner.timeline_table = QTableWidget(0, 6)
-    owner.timeline_table.setHorizontalHeaderLabels(
-        ["Timestamp UTC", "Employee", "Event", "Device", "Printer", "Source"]
-    )
-    owner.timeline_table.horizontalHeader().setStretchLastSection(True)
-    owner.timeline_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
-    forensic.layout().addWidget(owner.timeline_table)
-    owner.timeline_pins = QTextEdit()
-    owner.timeline_pins.setReadOnly(True)
-    owner.timeline_pins.setMaximumHeight(80)
-    forensic.layout().addWidget(QLabel("Pinned timeline findings"))
-    forensic.layout().addWidget(owner.timeline_pins)
-    tabs.addTab(forensic, "Evidence tools")
+    build_evidence_page(owner, tabs)
     owner._casebook_show_selected()
     tabs.setStyleSheet(_STYLE)
     return tabs

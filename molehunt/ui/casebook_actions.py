@@ -3,20 +3,23 @@
 from __future__ import annotations
 
 import csv
+import hashlib
 import json
 import re
 import sqlite3
+from datetime import UTC, datetime
 from pathlib import Path
 
 from molehunt.game.casebook import CaseDefinition
 from molehunt.game.generator import CaseInstance, generate_case
+from molehunt.game.leaderboard import record_graded
 from molehunt.game.progression import (
     get_case_progress,
     initialize_casebook,
     start_case,
-    submit_answer,
     use_hint,
 )
+from molehunt.game.validator import Procedure, Submission, grade_case, parse_details
 
 
 class CasebookActions:
@@ -78,6 +81,8 @@ class CasebookActions:
             self.fusion_results.setVisible(False)
             self.slot_matrix.setVisible(True)
             self.run_analysis_button.setText("Run analysis")
+            for index in range(self.evidence_tabs.count()):
+                self.evidence_tabs.setTabEnabled(index, True)
             return
 
         available = {
@@ -88,7 +93,7 @@ class CasebookActions:
             4: True,
             5: bool(
                 {
-                    "intake", "hex", "invisible", "diff", "ooxml", "image_dots",
+                    "intake", "hex", "invisible", "diff", "ooxml", "image_dots", "tardos",
                     "timeline", "notes", "report",
                 }
                 & tools
@@ -126,6 +131,10 @@ class CasebookActions:
         self.run_analysis_button.setText(
             "Run analysis" if has_auto_detector else "Build slot matrix"
         )
+        sub_tools = ({"intake", "hex", "invisible"}, {"diff"}, {"timeline"}, {"ooxml"},
+                     {"image_dots"}, {"tardos"}, {"notes", "report"})
+        for index, needed in enumerate(sub_tools):
+            self.evidence_tabs.setTabEnabled(index, bool(needed & tools))
 
     def _case_definition(self) -> CaseDefinition:
         case_id = self.case_selector.currentData()
@@ -175,6 +184,8 @@ class CasebookActions:
         )
         timeline_paths = []
         for path in instance.auxiliary_paths:
+            if path.suffix.casefold() != ".csv":
+                continue
             with path.open("r", encoding="utf-8-sig", newline="") as stream:
                 if "timestamp" in (csv.DictReader(stream).fieldnames or ()):
                     timeline_paths.append(str(path))
@@ -193,6 +204,19 @@ class CasebookActions:
         except (OSError, ValueError, sqlite3.Error) as error:
             self.status.setText(f"Hint error: {error}")
 
+    def _casebook_procedure(self, instance: CaseInstance, truth: dict) -> Procedure:
+        """Hygiene observed by the workbench: intake hash, notes, original untouched."""
+        database = self._field_path("casebook", "database")
+        digest = truth.get("evidence_sha256", "")
+        with sqlite3.connect(database) as connection:
+            taken = connection.execute(
+                "SELECT COUNT(*) FROM evidence WHERE sha256 = ?", (digest,)
+            ).fetchone()[0]
+        current = hashlib.sha256(instance.evidence_path.read_bytes()).hexdigest()
+        notes = bool(getattr(self, "notes_text", None) and self.notes_text.toPlainText().strip())
+        return Procedure(hashed=bool(taken), working_copy=bool(taken), notes=notes,
+                         original_untouched=current == digest)
+
     def _casebook_submit(self) -> None:
         try:
             definition = self._case_definition()
@@ -204,27 +228,32 @@ class CasebookActions:
             if not answer:
                 raise ValueError("enter an answer first")
             truth = json.loads(instance.ground_truth_path.read_text(encoding="utf-8"))
-            if definition.generator == "collusion":
-                expected = {item.casefold() for item in truth["colluders"]}
-                submitted = {item.strip().casefold() for item in answer.split(",") if item.strip()}
-                correct = submitted == expected
-            elif definition.generator == "print_timeline":
-                correct = answer == str(truth["printer_id"])
-            else:
-                correct = answer.casefold() == str(truth["copy_owner"]).casefold()
-            result = submit_answer(
-                self._field_path("casebook", "database"),
-                fields["player"].text().strip(),
-                self.case_definitions,
-                definition.case_id,
-                answer=answer,
-                correct=correct,
-                confidence=self.case_confidence.value(),
+            database = self._field_path("casebook", "database")
+            player = fields["player"].text().strip()
+            progress = self.case_progress.get(definition.case_id)
+            started = datetime.fromisoformat(progress.started_at) if progress and (
+                progress.started_at) else datetime.now(UTC)
+            with sqlite3.connect(database) as connection:
+                wrong = connection.execute(
+                    "SELECT COUNT(*) FROM submissions WHERE player_id = ? AND case_id = ? "
+                    "AND correct = 0", (player, definition.case_id)).fetchone()[0]
+            submission = Submission(answer, self.case_confidence.value(),
+                                    parse_details(fields["details"].text()))
+            score = grade_case(
+                definition.generator, truth, submission,
+                procedure=self._casebook_procedure(instance, truth),
+                elapsed_seconds=(datetime.now(UTC) - started).total_seconds(),
+                hints_used=progress.hints_used if progress else 0, wrong_before=wrong,
             )
+            status = record_graded(database, player, self.case_definitions, definition.case_id,
+                                   score, {"answer": answer, "details": dict(submission.details)})
             self._casebook_refresh()
-            verdict = "Correct" if result.completed else "Not correct yet"
+            verdict = "Correct" if score.correct else "Not correct yet"
             self.status.setText(
-                f"{verdict}: {result.points} points; Brier {result.grade.brier_score:.3f}"
+                f"{verdict}: {score.total} points (finding {score.finding}, procedure "
+                f"{score.procedure}, evidence {score.evidence}, calibration {score.calibration}, "
+                f"time {score.time_bonus}, penalties -{score.penalties}); case {status}. "
+                + " ".join(score.feedback)
             )
         except (OSError, ValueError, KeyError, sqlite3.Error, json.JSONDecodeError) as error:
             self.status.setText(f"Submission error: {error}")

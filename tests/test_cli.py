@@ -26,7 +26,11 @@ def test_analyze_ranks_clean_rendered_copy(tmp_path: Path) -> None:
     key_path = tmp_path / "master.key"
     key_path.write_bytes(key)
     master_path = tmp_path / "master.md"
-    master_path.write_text("Memo {{lex:begin|start}} now. Then {{lex:end|finish}}.", encoding="utf-8")
+    master_text = "\n".join(
+        f"Section {index:02}: " + "{{lex:begin|start}}."
+        for index in range(64)
+    )
+    master_path.write_text(master_text, encoding="utf-8")
     employees = [f"E{i:03}" for i in range(1, 11)]
     roster_path = tmp_path / "employees.csv"
     roster_path.write_text("id\n" + "\n".join(employees), encoding="utf-8")
@@ -54,6 +58,8 @@ def test_analyze_ranks_clean_rendered_copy(tmp_path: Path) -> None:
     assert result.exit_code == 0, result.stdout
     assert "E007" in result.stdout
     assert "SHA-256" in result.stdout
+    candidate_rows = [line.split()[0] for line in result.stdout.splitlines() if line.startswith("E0")]
+    assert candidate_rows[0] == "E007"
 
 
 def test_analyze_rejects_roster_without_id_column(tmp_path: Path) -> None:

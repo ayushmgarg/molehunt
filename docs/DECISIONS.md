@@ -26,3 +26,7 @@
 ## Log fusion
 
 - Event multipliers are explicit demo factors (`after_hours_download` 3, `print_job` 2, `badge_entry` 1.5, `unknown_ip` 2, `unusual_auth` 2). They are assumptions for the seeded cases, not calibrated probabilities; output lists every applied factor.
+
+## Timeline
+
+- Naive ISO timestamps in synthetic event CSVs are interpreted as UTC. Timezone-aware values are converted to UTC before sorting and display.

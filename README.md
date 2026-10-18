@@ -65,6 +65,19 @@ tools (bytes and invisible characters, diff vs master, timeline, OOXML
 explorer, image dot analyser, Tardos scorer with threshold slider, notes).
 Tick "Casebook mode" to lock tools until each case earns them.
 
+## Live demo across laptops (same Wi-Fi)
+
+```bash
+uv run molehunt live
+```
+
+The host prints a URL and a 6-digit PIN. On another laptop or phone, open the URL,
+pick an employee, and download a fingerprinted copy (txt, docx, or pdf). Edit or
+scrub it (or print the PDF and photograph it), then upload it on the same page.
+The host's `/board` page (put it on the projector) refreshes every 3 seconds with
+the hash, custody entry, ranking, and finding for each leak. Allow Python through
+the Windows firewall when asked. This is the only network feature; it is opt-in.
+
 ## Benchmark
 
 ```bash

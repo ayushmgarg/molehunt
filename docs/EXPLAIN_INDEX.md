@@ -27,6 +27,7 @@
 | ui/diff_actions, timeline_actions | EXPLAIN_ui_diff_actions, _ui_timeline |
 | ui/analysis_actions, casebook_actions | EXPLAIN_ui_analysis_actions, _ui_casebook_actions |
 | ui/redteam_panel | EXPLAIN_ui_redteam |
+| live, live_pages | EXPLAIN_live |
 
 Cross-cutting: DECISIONS.md (every ambiguity resolved), VALIDATION.md (tool
 cross-checks), BENCHMARK.md (measured results), PLAN_AUDIT.md (plan coverage).

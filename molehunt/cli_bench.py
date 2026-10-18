@@ -157,3 +157,41 @@ def redteam(
     typer.echo("Leaderboard (best per player):")
     for rank, (name, score, kept, outcome) in enumerate(rows, start=1):
         typer.echo(f"{rank:>2}. {name:<16} {score:>4}  utility {kept:.1%}  {outcome}")
+
+
+@app.command()
+def live(
+    master: Annotated[Path, typer.Option("--master")] = DEFAULT_MASTERS / "m1_roadmap.md",
+    employees: Annotated[Path, typer.Option("--employees")] = Path("data/demo/roster50.csv"),
+    key_file: Annotated[Path, typer.Option("--key-file")] = DEFAULT_KEY,
+    db_file: Annotated[Path, typer.Option("--db-file")] = Path(".molehunt/molehunt.sqlite3"),
+    host: Annotated[str, typer.Option("--host", help="0.0.0.0 = all LAN interfaces")]
+    = "0.0.0.0",
+    port: Annotated[int, typer.Option("--port")] = 8765,
+    workdir: Annotated[Path, typer.Option("--workdir")] = Path(".molehunt/live"),
+) -> None:
+    """Live LAN demo: other laptops get copies and upload leaks; you watch /board."""
+    import socket
+
+    from molehunt.core.keys import load_or_create_key
+    from molehunt.live import LiveState, make_server
+
+    try:
+        state = LiveState(master, read_employee_ids(employees), load_or_create_key(key_file),
+                          db_file, workdir)
+        server = make_server(state, host, port)
+    except (OSError, ValueError) as error:
+        fail(error)
+    try:
+        lan_ip = socket.gethostbyname(socket.gethostname())
+    except OSError:
+        lan_ip = "this-laptop-ip"
+    typer.echo(f"MoleHunt Live on http://{lan_ip}:{server.server_port}/  (PIN {state.pin})")
+    typer.echo(f"Examiner board: http://{lan_ip}:{server.server_port}/board")
+    typer.echo("Same Wi-Fi only. Allow Python through the firewall if asked. Ctrl+C stops.")
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        typer.echo("Stopped.")
+    finally:
+        server.server_close()

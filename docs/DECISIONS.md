@@ -39,3 +39,7 @@
 ## Alignment skeleton
 
 - Both master and suspect are skeletonised (Cf removed, look-alikes folded, word variants mapped to bit 0) before `SequenceMatcher`, as SPEC 5.5 requires. Previously only the master side was canonical, and stripped copies of repetitive text could read a neighbouring paragraph's slot.
+
+## Live LAN demo (rule 7 exception)
+
+- Approved by the project owner on 2026-10-18 for showcasing. `molehunt live` uses the stdlib `ThreadingHTTPServer` (no new dependency), only when started by hand. Every POST needs the host's random 6-digit PIN (constant-time compare); uploads are capped at 2 MB, stored under generated names, limited to .txt/.md/.docx/.png, and go through the normal intake (read-only original, SHA-256, custody entry). No outbound connections and no scanning.

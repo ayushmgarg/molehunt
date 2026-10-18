@@ -280,3 +280,4 @@ def submit_answer(
         ).fetchone()
         tools = tuple(json.loads(row[0]))
     return SubmissionResult(grade, points, completed, tools)
+

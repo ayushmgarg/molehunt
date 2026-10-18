@@ -81,3 +81,26 @@ def test_case_progress_is_independent_between_players(tmp_path) -> None:
     start_case(database, "player-01", "C-01", cases)
     assert get_case_progress(database, "player-01")[0].status == "in_progress"
     assert get_case_progress(database, "player-02")[0].status == "available"
+
+
+def test_graded_submissions_advance_at_sixty_close_after_three_wrong_and_rank(tmp_path) -> None:
+    from molehunt.game.leaderboard import leaderboard, record_graded
+    from molehunt.game.validator import CaseScore
+
+    database = tmp_path / "registry.sqlite3"
+    cases = load_casebook()
+    for player in ("p1", "p2"):
+        initialize_casebook(database, player, cases)
+        start_case(database, player, "C-01", cases)
+
+    def score(total: int, correct: bool) -> CaseScore:
+        return CaseScore(50 * correct, 20, 15, 10.0, 0.0, 0, total, correct, ())
+
+    assert record_graded(database, "p1", cases, "C-01", score(55, True), {}) == "in_progress"
+    assert record_graded(database, "p1", cases, "C-01", score(92, True), {}) == "complete"
+    assert get_case_progress(database, "p1")[1].status == "available"
+    for attempt in range(2):
+        assert record_graded(database, "p2", cases, "C-01", score(10, False), {}) == "in_progress"
+    assert record_graded(database, "p2", cases, "C-01", score(12, False), {}) == "closed"
+    assert get_case_progress(database, "p2")[1].status == "available"
+    assert leaderboard(database) == [("p1", 92, 1), ("p2", 12, 1)]

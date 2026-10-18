@@ -12,7 +12,7 @@ uv sync
 uv run molehunt --help
 ```
 
-The native desktop workbench is still being built. See `SPEC.md` and `docs/DESIGN.md` for its requirements and interface direction.
+Open the current native desktop workbench with `uv run molehunt serve`. It includes copy issuance, analysis, intake/custody, and a seeded Red Team bench. The casebook and several advanced forensic views remain in development. See `SPEC.md` and `docs/DESIGN.md` for the full target.
 
 ## Current engine workflow
 

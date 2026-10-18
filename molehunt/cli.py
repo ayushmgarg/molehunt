@@ -37,6 +37,14 @@ def version() -> None:
 
 
 @app.command()
+def serve() -> None:
+    """Open the native PySide6 forensic workbench."""
+    from molehunt.ui.app import run_app
+
+    raise typer.Exit(code=run_app())
+
+
+@app.command()
 def init(
     key_file: Annotated[Path, typer.Option("--key-file")] = Path(".molehunt/master.key"),
 ) -> None:

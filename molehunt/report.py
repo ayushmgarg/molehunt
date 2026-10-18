@@ -5,7 +5,7 @@ custody status); method (channels, LR formula, tool version, benchmark hash);
 findings (per-channel survival, ranking, decision and verbal statement);
 correlation (log fusion posterior, timeline); limitations (copy vs person,
 erasure rate, alternatives, measured error rate); conclusion; appendices
-(slot matrix excerpt, hex excerpt). Missing inputs are stated, never invented.
+(slot matrix excerpt, hex excerpt). Tagged examiner notes appear before limitations. Missing inputs are stated, never invented.
 """
 
 from __future__ import annotations
@@ -57,6 +57,7 @@ class ReportInput:
     timeline: tuple[tuple[str, str, str], ...] = ()
     slot_matrix: tuple[tuple[str, ...], ...] = ()
     hex_excerpt: tuple[str, ...] = ()
+    notes: tuple[str, ...] = ()
     bench_dir: Path = Path("bench")
 
 
@@ -158,6 +159,8 @@ def build_sections(data: ReportInput) -> list[Section]:
              "event multipliers. These demo weights are assumptions, not calibrated probabilities."),),
             tuple(correlation_tables),
         ))
+    if data.notes:
+        sections.append(Section("Examiner notes and findings", data.notes))
     sections.append(Section("Interpretation and limitations", (
         COPY_CAVEAT + " Copy sharing, account takeover, or a copy obtained outside the "
         "issuing system remain alternative hypotheses until excluded by other evidence.",
@@ -214,11 +217,13 @@ def write_analysis_report(
     fused_scores: Sequence[FusedScore] | None = None,
     decision: Decision | None = None,
     channels: dict[str, tuple[int, int]] | None = None,
+    notes: Sequence[str] = (),
 ) -> Path:
     """Single-evidence convenience wrapper around :func:`write_report`."""
     return write_report(output_path, ReportInput(
         evidence=(EvidenceItem(evidence_name, evidence_sha256),),
         scores=tuple(scores), observed_slots=observed_slots, total_slots=total_slots,
         flip_rate=flip_rate, case_id=case_id, decision=decision, channels=channels or {},
+        notes=tuple(notes),
         fused_scores=tuple(fused_scores) if fused_scores is not None else None,
     ))

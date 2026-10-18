@@ -13,6 +13,7 @@ from molehunt.analysis import analyze_text
 from molehunt.attacks.harness import run_text_benchmark, write_benchmark
 from molehunt.core.autoslots import prepare_master
 from molehunt.core.keys import KEY_BYTES
+from molehunt.detect.decide import decide
 from molehunt.detect.fuse import FusedScore, fuse_scores
 from molehunt.detect.ingest import IngestedEvidence, ingest
 from molehunt.detect.logs import read_fusion_logs
@@ -189,6 +190,8 @@ class AnalysisActions:
                 scores=self.scores,
                 flip_rate=0.15,
                 fused_scores=self._analysis.fused_scores,
+                decision=decide(self.scores, candidates=len(self._analysis.codewords)),
+                notes=getattr(self, "_report_notes", ()),
             )
             self.status.setText(f"Report written: {output}")
         except (OSError, ValueError, StopIteration) as error:

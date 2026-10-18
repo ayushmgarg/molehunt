@@ -62,6 +62,8 @@ CREATE TABLE IF NOT EXISTS cases (
 CREATE TABLE IF NOT EXISTS progress (
     player_id TEXT NOT NULL, case_id TEXT NOT NULL REFERENCES cases(case_id),
     status TEXT NOT NULL, unlocked_tools_json TEXT NOT NULL DEFAULT '[]',
+    score INTEGER NOT NULL DEFAULT 0, hints_used INTEGER NOT NULL DEFAULT 0,
+    started_at TEXT, finished_at TEXT,
     PRIMARY KEY (player_id, case_id)
 );
 CREATE TABLE IF NOT EXISTS submissions (
@@ -90,9 +92,20 @@ def initialize_database(path: str | Path) -> Path:
             "CREATE TABLE IF NOT EXISTS schema_meta "
             "(version INTEGER PRIMARY KEY, applied_at TEXT NOT NULL)"
         )
+        progress_columns = {
+            row[1] for row in connection.execute("PRAGMA table_info(progress)")
+        }
+        for name, definition in (
+            ("score", "INTEGER NOT NULL DEFAULT 0"),
+            ("hints_used", "INTEGER NOT NULL DEFAULT 0"),
+            ("started_at", "TEXT"),
+            ("finished_at", "TEXT"),
+        ):
+            if name not in progress_columns:
+                connection.execute(f"ALTER TABLE progress ADD COLUMN {name} {definition}")
         connection.execute(
             "INSERT OR IGNORE INTO schema_meta(version, applied_at) VALUES (?, ?)",
-            (1, datetime.now(UTC).isoformat(timespec="seconds")),
+            (2, datetime.now(UTC).isoformat(timespec="seconds")),
         )
     return database
 

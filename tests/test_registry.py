@@ -30,6 +30,32 @@ def test_initialize_registry_is_idempotent_and_creates_domain_tables(tmp_path) -
         }
     assert {"masters", "slots", "employees", "copies", "evidence", "custody_log"} <= names
     assert {"cases", "progress", "submissions", "access_log", "aux_logs"} <= names
+    with sqlite3.connect(database) as connection:
+        progress_columns = {row[1] for row in connection.execute("PRAGMA table_info(progress)")}
+        versions = {row[0] for row in connection.execute("SELECT version FROM schema_meta")}
+    assert {"score", "hints_used", "started_at", "finished_at"} <= progress_columns
+    assert versions == {2}
+
+
+def test_initialize_database_migrates_existing_progress_rows(tmp_path) -> None:
+    database = tmp_path / "legacy.sqlite3"
+    with sqlite3.connect(database) as connection:
+        connection.executescript(
+            "CREATE TABLE cases (case_id TEXT PRIMARY KEY, player_id TEXT NOT NULL, "
+            "seed INTEGER NOT NULL, status TEXT NOT NULL, score INTEGER NOT NULL DEFAULT 0, "
+            "hints_used INTEGER NOT NULL DEFAULT 0, started_at TEXT NOT NULL, finished_at TEXT);"
+            "CREATE TABLE progress (player_id TEXT NOT NULL, case_id TEXT NOT NULL, "
+            "status TEXT NOT NULL, unlocked_tools_json TEXT NOT NULL DEFAULT '[]', "
+            "PRIMARY KEY(player_id, case_id));"
+            "INSERT INTO cases VALUES ('C-01','legacy',1,'done',0,0,'now',NULL);"
+            "INSERT INTO progress VALUES ('legacy','C-01','complete','[]');"
+        )
+    initialize_database(database)
+    with sqlite3.connect(database) as connection:
+        row = connection.execute(
+            "SELECT status, score, hints_used, started_at, finished_at FROM progress"
+        ).fetchone()
+    assert row == ("complete", 0, 0, None, None)
 
 
 def test_registered_master_slots_and_copy_hash_are_persisted(tmp_path) -> None:

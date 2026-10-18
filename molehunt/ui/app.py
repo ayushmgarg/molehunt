@@ -6,6 +6,7 @@ import csv
 from pathlib import Path
 
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QFont, QFontDatabase
 from PySide6.QtWidgets import QApplication, QLabel, QLineEdit, QMainWindow, QTableWidgetItem
 
 from molehunt.attacks.harness import run_text_benchmark, write_benchmark
@@ -22,6 +23,24 @@ from molehunt.detect.score import CandidateScore, score_candidates
 from molehunt.intake import intake_evidence
 from molehunt.report import write_analysis_report
 from molehunt.ui.pages import build_pages
+
+
+def _load_fallback_font() -> None:
+    """Register an installed system sans font when Qt has no discovered fonts."""
+    if QFontDatabase.families():
+        return
+    candidates = (
+        Path("C:/Windows/Fonts/segoeui.ttf"),
+        Path("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"),
+        Path("/System/Library/Fonts/Supplemental/Arial.ttf"),
+    )
+    for font_path in candidates:
+        if font_path.is_file():
+            font_id = QFontDatabase.addApplicationFont(str(font_path))
+            families = QFontDatabase.applicationFontFamilies(font_id)
+            if font_id >= 0 and families:
+                QApplication.instance().setFont(QFont(families[0], 10))
+                return
 
 
 def _employee_ids(path: Path) -> list[str]:
@@ -47,6 +66,7 @@ class MoleHuntWindow(QMainWindow):
 
     def __init__(self) -> None:
         super().__init__()
+        _load_fallback_font()
         self.setWindowTitle("MoleHunt | Forensic Desk")
         self.resize(1180, 780)
         self.fields: dict[str, dict[str, QLineEdit]] = {}

@@ -18,7 +18,7 @@ from PySide6.QtWidgets import (
 )
 
 _STYLE = """
-QMainWindow, QWidget { background: #14171A; color: #EFE9DC; font-size: 14px; }
+QMainWindow, QWidget { background: #14171A; color: #EFE9DC; font-family: "Segoe UI", Arial, sans-serif; font-size: 14px; }
 QTabWidget::pane { border: 1px solid #3A4048; background: #1B1F24; }
 QTabBar::tab { background: #3A4048; padding: 10px 18px; margin-right: 2px; }
 QTabBar::tab:selected { background: #D9822B; color: #1B1F24; }

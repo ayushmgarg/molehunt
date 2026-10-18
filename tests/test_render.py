@@ -54,4 +54,4 @@ def test_pdf_copy_carries_text_and_keyed_dot_metadata() -> None:
     assert meta == pdf_dot_metadata(b"k" * 32, "E001", issued)
     pdf = render_pdf(template, slots, [1], meta)
     assert pdf.startswith(b"%PDF-")
-    assert render_pdf(template, slots, [1], meta)[:200] == pdf[:200]
+    assert render_pdf(template, slots, [1], meta) == pdf

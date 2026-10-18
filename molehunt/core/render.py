@@ -87,6 +87,6 @@ def render_pdf(
         story.append(Paragraph(escape(line), styles["BodyText"]) if line.strip()
                      else Spacer(1, 6))
     output = BytesIO()
-    SimpleDocTemplate(output, pagesize=A4, topMargin=60, bottomMargin=60).build(
+    SimpleDocTemplate(output, pagesize=A4, topMargin=60, bottomMargin=60, invariant=1).build(
         story, onFirstPage=dots, onLaterPages=dots)
     return output.getvalue()

@@ -77,6 +77,16 @@ def test_casebook_lock_gates_tools_until_the_selected_case_unlocks_them(tmp_path
     assert not window.slot_matrix.isHidden()
     assert window.run_analysis_button.text() == "Build slot matrix"
     assert window.diff_evidence_button.isEnabled()
+
+    truth = json.loads(window.case_instance.ground_truth_path.read_text(encoding="utf-8"))
+    window.fields["casebook"]["answer"].setText(truth["copy_owner"])
+    window._casebook_submit()
+    window.case_selector.setCurrentIndex(2)
+    window._casebook_start()
+    _wait_for_task(window, application)
+    assert window.timeline_load_button.isEnabled()
+    assert "print_events.csv" in window.timeline_paths.text()
+
     window.casebook_lock.setChecked(False)
     assert all(tabs.isTabEnabled(index) for index in range(tabs.count()))
     assert not window.results.isHidden()

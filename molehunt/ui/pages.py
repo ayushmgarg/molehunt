@@ -32,7 +32,6 @@ QPushButton:focus, QLineEdit:focus { outline: 2px solid #EFE9DC; }
 QLabel#status { padding: 8px; color: #D9822B; }
 """
 
-
 def _add_field(form: QFormLayout, fields: dict[str, QLineEdit], key: str, label: str, default: str = "") -> None:
     field = QLineEdit(default)
     fields[key] = field
@@ -51,7 +50,6 @@ def _add_field(form: QFormLayout, fields: dict[str, QLineEdit], key: str, label:
     layout.addWidget(browse)
     form.addRow(label, row)
 
-
 def _browse(field: QLineEdit, save: bool = False, *, directory: bool = False) -> None:
     if directory:
         path = QFileDialog.getExistingDirectory(None, "Choose case output folder")
@@ -62,7 +60,6 @@ def _browse(field: QLineEdit, save: bool = False, *, directory: bool = False) ->
     if path:
         field.setText(path)
 
-
 def _form_page(owner, name: str) -> tuple[QWidget, QFormLayout, dict[str, QLineEdit]]:
     page = QWidget()
     layout = QVBoxLayout(page)
@@ -72,7 +69,6 @@ def _form_page(owner, name: str) -> tuple[QWidget, QFormLayout, dict[str, QLineE
     owner.fields[name] = fields
     layout.addLayout(form)
     return page, form, fields
-
 
 def build_pages(owner) -> QTabWidget:
     """Build tabs and expose their widgets on the window controller."""
@@ -211,6 +207,8 @@ def build_pages(owner) -> QTabWidget:
     forensic, form, fields = _form_page(owner, "forensics")
     _add_field(form, fields, "database", "SQLite registry", ".molehunt/molehunt.sqlite3")
     _add_field(form, fields, "evidence", "Evidence file", "")
+    _add_field(form, fields, "timeline_paths", "Timestamped timeline CSVs (; separated)", "")
+    owner.timeline_paths = fields["timeline_paths"]
     evidence_actions = QHBoxLayout()
     refresh_evidence = QPushButton("Refresh evidence tree")
     owner.evidence_refresh_button = refresh_evidence
@@ -268,6 +266,30 @@ def build_pages(owner) -> QTabWidget:
     owner.diff_variations.setReadOnly(True)
     owner.diff_variations.setMaximumHeight(90)
     forensic.layout().addWidget(owner.diff_variations)
+    timeline_actions = QHBoxLayout()
+    owner.timeline_load_button = QPushButton("Load timeline")
+    owner.timeline_load_button.clicked.connect(owner._timeline_load)
+    timeline_actions.addWidget(owner.timeline_load_button)
+    timeline_actions.addWidget(QLabel("Filter events"))
+    owner.timeline_filter = QLineEdit()
+    owner.timeline_filter.textChanged.connect(owner._timeline_filter)
+    timeline_actions.addWidget(owner.timeline_filter, 1)
+    owner.timeline_pin_button = QPushButton("Pin selected event")
+    owner.timeline_pin_button.clicked.connect(owner._timeline_pin_selected)
+    timeline_actions.addWidget(owner.timeline_pin_button)
+    forensic.layout().addLayout(timeline_actions)
+    owner.timeline_table = QTableWidget(0, 6)
+    owner.timeline_table.setHorizontalHeaderLabels(
+        ["Timestamp UTC", "Employee", "Event", "Device", "Printer", "Source"]
+    )
+    owner.timeline_table.horizontalHeader().setStretchLastSection(True)
+    owner.timeline_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
+    forensic.layout().addWidget(owner.timeline_table)
+    owner.timeline_pins = QTextEdit()
+    owner.timeline_pins.setReadOnly(True)
+    owner.timeline_pins.setMaximumHeight(80)
+    forensic.layout().addWidget(QLabel("Pinned timeline findings"))
+    forensic.layout().addWidget(owner.timeline_pins)
     tabs.addTab(forensic, "Evidence tools")
     owner._casebook_show_selected()
     tabs.setStyleSheet(_STYLE)

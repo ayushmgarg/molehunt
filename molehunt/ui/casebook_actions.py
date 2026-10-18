@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import csv
 import json
 import re
 import sqlite3
@@ -68,6 +69,11 @@ class CasebookActions:
             self.diff_label.setVisible(True)
             self.diff_table.setVisible(True)
             self.diff_variations.setVisible(True)
+            self.timeline_load_button.setEnabled(True)
+            self.timeline_filter.setEnabled(True)
+            self.timeline_table.setVisible(True)
+            self.timeline_pin_button.setEnabled(True)
+            self.timeline_pins.setVisible(True)
             self.results.setVisible(True)
             self.fusion_results.setVisible(False)
             self.slot_matrix.setVisible(True)
@@ -95,6 +101,7 @@ class CasebookActions:
         has_hex = "hex" in tools
         has_invisible = "invisible" in tools
         has_diff = "diff" in tools
+        has_timeline = "timeline" in tools
         has_auto_detector = "auto_detector" in tools
         has_slot_matrix = "slot_matrix" in tools
         self.evidence_tree.setVisible(has_intake)
@@ -108,6 +115,11 @@ class CasebookActions:
         self.diff_label.setVisible(has_diff)
         self.diff_table.setVisible(has_diff)
         self.diff_variations.setVisible(has_diff)
+        self.timeline_load_button.setEnabled(has_timeline)
+        self.timeline_filter.setEnabled(has_timeline)
+        self.timeline_table.setVisible(has_timeline)
+        self.timeline_pin_button.setEnabled(has_timeline)
+        self.timeline_pins.setVisible(has_timeline)
         self.results.setVisible(has_auto_detector)
         self.fusion_results.setVisible(has_auto_detector)
         self.slot_matrix.setVisible(has_auto_detector or has_slot_matrix)
@@ -161,6 +173,12 @@ class CasebookActions:
             f"Auxiliary logs: {', '.join(str(path) for path in instance.auxiliary_paths) or 'none'}\n"
             "Generated answers are checked privately when you submit."
         )
+        timeline_paths = []
+        for path in instance.auxiliary_paths:
+            with path.open("r", encoding="utf-8-sig", newline="") as stream:
+                if "timestamp" in (csv.DictReader(stream).fieldnames or ()):
+                    timeline_paths.append(str(path))
+        self.timeline_paths.setText(";".join(timeline_paths))
         self._casebook_refresh()
         self.status.setText(f"Generated {definition.case_id}: {instance.evidence_path}")
 

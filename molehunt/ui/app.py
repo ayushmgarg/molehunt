@@ -21,6 +21,7 @@ from molehunt.ui.casebook_actions import CasebookActions
 from molehunt.ui.diff_actions import DiffActions
 from molehunt.ui.forensics_actions import ForensicsActions
 from molehunt.ui.pages import build_pages
+from molehunt.ui.timeline_actions import TimelineActions
 from molehunt.ui.worker import TaskWorker
 
 
@@ -65,7 +66,7 @@ def _issue_inputs(
 
 
 class MoleHuntWindow(
-    AnalysisActions, CasebookActions, DiffActions, ForensicsActions, QMainWindow
+    AnalysisActions, CasebookActions, DiffActions, ForensicsActions, TimelineActions, QMainWindow
 ):
     """Desktop tabs for issuing copies, analyzing leaks, intake, and benchmarks."""
 

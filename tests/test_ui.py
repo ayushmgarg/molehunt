@@ -15,6 +15,19 @@ from molehunt.core.template import parse_template
 from molehunt.ui.app import MoleHuntWindow
 
 
+def _wait_for_task(window: MoleHuntWindow, application: QApplication) -> None:
+    """Wait for both Qt completion and native thread shutdown before the next task."""
+    thread = window._thread
+    assert thread is not None
+    completed = QEventLoop()
+    thread.finished.connect(completed.quit)
+    QTimer.singleShot(10000, completed.quit)
+    completed.exec()
+    assert thread.wait(10000)
+    application.processEvents()
+    assert window._thread is None
+
+
 def test_workbench_builds_engine_tabs() -> None:
     application = QApplication.instance() or QApplication([])
     window = MoleHuntWindow()
@@ -63,11 +76,7 @@ def test_workbench_analysis_populates_candidate_slot_matrix(tmp_path) -> None:
     window._analyze()
     assert window.status.text() == "Working…"
     assert not window.centralWidget().isEnabled()
-    completed = QEventLoop()
-    window._thread.finished.connect(completed.quit)
-    QTimer.singleShot(10000, completed.quit)
-    completed.exec()
-    application.processEvents()
+    _wait_for_task(window, application)
 
     assert window.status.text().startswith("Analysis complete")
     assert window.slot_matrix.columnCount() == 65
@@ -105,19 +114,11 @@ def test_workbench_registers_and_issues_through_sqlite_registry(tmp_path) -> Non
     fields["employee"].setText("E001")
     fields["output"].setText(str(output))
     window._register()
-    registered = QEventLoop()
-    window._thread.finished.connect(registered.quit)
-    QTimer.singleShot(10000, registered.quit)
-    registered.exec()
-    application.processEvents()
+    _wait_for_task(window, application)
     assert window.status.text() == "Registered master M1: 1 slots"
 
     window._issue()
-    issued = QEventLoop()
-    window._thread.finished.connect(issued.quit)
-    QTimer.singleShot(10000, issued.quit)
-    issued.exec()
-    application.processEvents()
+    _wait_for_task(window, application)
     assert window.status.text().startswith("Issued copy ")
     with sqlite3.connect(database) as connection:
         row = connection.execute(
@@ -134,11 +135,7 @@ def test_workbench_registers_and_issues_through_sqlite_registry(tmp_path) -> Non
     intake_fields["root"].setText(str(tmp_path / "cases"))
     intake_fields["database"].setText(str(database))
     window._intake()
-    intaked = QEventLoop()
-    window._thread.finished.connect(intaked.quit)
-    QTimer.singleShot(10000, intaked.quit)
-    intaked.exec()
-    application.processEvents()
+    _wait_for_task(window, application)
     assert window.status.text().startswith("Intake complete: evidence ")
     with sqlite3.connect(database) as connection:
         evidence = connection.execute(

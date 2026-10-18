@@ -143,6 +143,15 @@ def get_master(database: str | Path, master_id: str) -> sqlite3.Row | None:
         return connection.execute("SELECT * FROM masters WHERE id = ?", (master_id,)).fetchone()
 
 
+def get_master_by_path(database: str | Path, template_path: str | Path) -> sqlite3.Row | None:
+    """Return a master registered from the same resolved template path."""
+    resolved = str(Path(template_path).resolve())
+    with _connect(database) as connection:
+        return connection.execute(
+            "SELECT * FROM masters WHERE template_path = ?", (resolved,)
+        ).fetchone()
+
+
 def add_employee(
     database: str | Path,
     employee_id: str,

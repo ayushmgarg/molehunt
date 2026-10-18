@@ -10,6 +10,7 @@ from molehunt.core.template import parse_template
 from molehunt.registry import (
     add_employee,
     get_master,
+    get_master_by_path,
     initialize_database,
     record_copy,
     register_master,
@@ -38,6 +39,7 @@ def test_registered_master_slots_and_copy_hash_are_persisted(tmp_path) -> None:
 
     register_master(database, "M-01", "Demo master", template_path, source, slots)
     master = get_master(database, "M-01")
+    assert get_master_by_path(database, template_path)["id"] == "M-01"
     assert master["n_slots"] == 2
     assert master["sha256"] == hashlib.sha256(source.encode()).hexdigest()
     with sqlite3.connect(database) as connection:

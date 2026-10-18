@@ -1,8 +1,20 @@
-"""Command-line entry point. Commands are added as their engine phases land."""
+"""Initial CLI for key setup and local leak analysis."""
+
+import csv
+from pathlib import Path
+from typing import Annotated
 
 import typer
 
 from molehunt import __version__
+from molehunt.core.codes import generate_codewords
+from molehunt.core.keys import KEY_BYTES, load_or_create_key
+from molehunt.core.slots import allocate_slots
+from molehunt.core.template import parse_template
+from molehunt.detect.align import align_to_master
+from molehunt.detect.extract import extract_variants
+from molehunt.detect.ingest import ingest
+from molehunt.detect.score import score_candidates
 
 app = typer.Typer(
     name="molehunt",
@@ -15,6 +27,84 @@ app = typer.Typer(
 def version() -> None:
     """Print the installed MoleHunt version."""
     typer.echo(f"MoleHunt {__version__}")
+
+
+@app.command()
+def init(
+    key_file: Annotated[Path, typer.Option("--key-file")] = Path(".molehunt/master.key"),
+) -> None:
+    """Create or verify the local secret key file."""
+    try:
+        load_or_create_key(key_file)
+    except (OSError, ValueError) as error:
+        typer.echo(f"Error: {error}", err=True)
+        raise typer.Exit(code=2) from error
+    typer.echo(f"Key ready: {key_file} ({KEY_BYTES} bytes)")
+
+
+def _read_employee_ids(path: Path) -> list[str]:
+    """Read synthetic employee IDs from a CSV file with an `id` column."""
+    try:
+        with path.open("r", encoding="utf-8-sig", newline="") as stream:
+            reader = csv.DictReader(stream)
+            if not reader.fieldnames or "id" not in reader.fieldnames:
+                raise ValueError("employee CSV must have an 'id' column")
+            employee_ids = [
+                row.get("id", "").strip()
+                for row in reader
+                if row.get("id", "").strip()
+            ]
+    except OSError as error:
+        raise ValueError(f"cannot read employee CSV: {path}") from error
+    if not employee_ids:
+        raise ValueError("employee CSV contains no IDs")
+    if len(set(employee_ids)) != len(employee_ids):
+        raise ValueError("employee IDs must be unique")
+    return employee_ids
+
+
+@app.command()
+def analyze(
+    evidence: Annotated[Path, typer.Argument(help="Evidence file: txt, md, docx, or png")],
+    master: Annotated[Path, typer.Option("--master", help="Variation-marked master document")],
+    employees: Annotated[Path, typer.Option("--employees", help="Synthetic roster CSV with id column")],
+    key_file: Annotated[Path, typer.Option("--key-file")] = Path(".molehunt/master.key"),
+    flip_rate: Annotated[float, typer.Option("--flip-rate", min=0.000001, max=0.499999)] = 0.15,
+) -> None:
+    """Rank synthetic copy candidates for one evidence file."""
+    try:
+        key = key_file.read_bytes()
+        if len(key) != KEY_BYTES:
+            raise ValueError(f"key file must contain {KEY_BYTES} bytes")
+        source = master.read_text(encoding="utf-8")
+        employee_ids = _read_employee_ids(employees)
+        evidence_record = ingest(evidence)
+        if evidence_record.text is None:
+            raise ValueError("PNG dot metadata is available; text OCR is not implemented")
+        template = parse_template(source)
+        slots = allocate_slots(template, key)
+        codewords = generate_codewords(key, employee_ids, len(slots))
+        windows = align_to_master(template, slots, evidence_record.text)
+        extracted = extract_variants(evidence_record.text, windows)
+        by_index = {item.slot_index: item.bit for item in extracted}
+        observations = [by_index[index] for index in range(len(slots))]
+        scores = score_candidates(observations, codewords, flip_rate=flip_rate)
+    except (OSError, UnicodeError, ValueError) as error:
+        typer.echo(f"Error: {error}", err=True)
+        raise typer.Exit(code=2) from error
+
+    typer.echo(f"Evidence SHA-256: {evidence_record.sha256}")
+    typer.echo(f"Observed slots: {sum(bit is not None for bit in observations)} / {len(slots)}")
+    typer.echo("Candidate  Matches  N  Z  P(null)  log10 LR")
+    for score in scores:
+        typer.echo(
+            f"{score.candidate_id:<10} {score.matches:>7} {score.observed_slots:>3} "
+            f"{score.z_score:>5.2f} {score.binomial_p:>8.4g} {score.log10_lr:>9.3f}"
+        )
+    if not any(bit is not None for bit in observations):
+        typer.echo("Finding: cannot distinguish; no slots were observed.")
+    else:
+        typer.echo("Finding: ranked candidates only; decision threshold needs benchmark calibration.")
 
 
 if __name__ == "__main__":

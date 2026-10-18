@@ -14,4 +14,15 @@ uv run molehunt --help
 
 Run the desktop bench with `uv run molehunt serve` when the workbench phase is complete. See `SPEC.md` and `docs/DESIGN.md` for requirements and interface direction.
 
+## Current engine workflow
+
+Create a local key, then analyze a text or DOCX leak against a variation-marked master and a synthetic roster CSV with an `id` column:
+
+```powershell
+uv run molehunt init
+uv run molehunt analyze data/evidence/leak.txt --master data/masters/master.md --employees data/employees.csv
+```
+
+The analyzer reports a ranking and LR. It does not make a final accusation until a decision threshold has been calibrated by the benchmark.
+
 Only generated synthetic people, documents, and logs belong in this repository. No network or scanning features are in scope.

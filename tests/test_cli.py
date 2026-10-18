@@ -4,6 +4,7 @@ import hashlib
 import sqlite3
 from pathlib import Path
 
+from docx import Document
 from typer.testing import CliRunner
 
 from molehunt.cli import app
@@ -79,6 +80,54 @@ def test_analyze_ranks_clean_rendered_copy(tmp_path: Path) -> None:
     assert candidate_rows[0] == "E007"
     assert report_path.is_file()
     assert str(report_path) in result.stdout
+
+
+def test_analyze_fuses_log_csv_and_includes_it_in_report(tmp_path: Path) -> None:
+    key = bytes(range(32))
+    key_path = tmp_path / "master.key"
+    key_path.write_bytes(key)
+    master_path = tmp_path / "master.md"
+    source = "\n".join(
+        f"Section {index:02}: " + "{{lex:begin|start}}."
+        for index in range(16)
+    )
+    master_path.write_text(source, encoding="utf-8")
+    template = parse_template(source)
+    slots = allocate_slots(template, key)
+    evidence = tmp_path / "leak.txt"
+    evidence.write_text(
+        render_text(template, slots, generate_codeword(key, "E002", len(slots))),
+        encoding="utf-8",
+    )
+    employees = tmp_path / "employees.csv"
+    employees.write_text("id\nE001\nE002\n", encoding="utf-8")
+    logs = tmp_path / "logs.csv"
+    logs.write_text(
+        "employee_id,access_level,event\n"
+        "E001,direct,after_hours_download\n"
+        "E001,direct,print_job\n"
+        "E002,indirect,\n",
+        encoding="utf-8",
+    )
+    report = tmp_path / "analysis.docx"
+    result = runner.invoke(
+        app,
+        [
+            "analyze", str(evidence), "--master", str(master_path), "--employees", str(employees),
+            "--key-file", str(key_path), "--logs", str(logs), "--report", str(report),
+        ],
+    )
+    assert result.exit_code == 0, result.stdout
+    assert "Log fusion (explicit demo assumptions; not calibrated)" in result.stdout
+    assert "after_hours_download ×3" in result.stdout
+    document = Document(report)
+    assert any(paragraph.text == "Log fusion" for paragraph in document.paragraphs)
+    assert any(
+        "after_hours_download ×3" in cell.text and "print_job ×2" in cell.text
+        for table in document.tables
+        for row in table.rows
+        for cell in row.cells
+    )
 
 
 def test_issue_creates_copy_that_analyze_identifies(tmp_path: Path) -> None:

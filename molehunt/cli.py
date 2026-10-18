@@ -19,7 +19,9 @@ from molehunt.core.template import parse_template
 from molehunt.custody import append_custody_entry, sha256_file, verify_custody
 from molehunt.detect.align import align_to_master
 from molehunt.detect.extract import extract_variants
+from molehunt.detect.fuse import fuse_scores
 from molehunt.detect.ingest import ingest
+from molehunt.detect.logs import read_fusion_logs
 from molehunt.detect.score import score_candidates
 from molehunt.intake import intake_evidence
 from molehunt.registry import (
@@ -188,6 +190,8 @@ def analyze(
     flip_rate: Annotated[float, typer.Option("--flip-rate", min=0.000001, max=0.499999)] = 0.15,
     report: Annotated[Path | None, typer.Option("--report", help="Optional DOCX report path")]
     = None,
+    logs: Annotated[Path | None, typer.Option("--logs", help="Optional fusion CSV log evidence")]
+    = None,
     case_id: Annotated[str, typer.Option("--case-id", help="Case ID for the report")]
     = "Not provided",
 ) -> None:
@@ -209,6 +213,10 @@ def analyze(
         by_index = {item.slot_index: item.bit for item in extracted}
         observations = [by_index[index] for index in range(len(slots))]
         scores = score_candidates(observations, codewords, flip_rate=flip_rate)
+        fused_scores = None
+        if logs is not None:
+            log_evidence = read_fusion_logs(logs, set(employee_ids))
+            fused_scores = fuse_scores(scores, log_evidence.access, log_evidence.events)
         report_path = None
         if report is not None:
             report_path = write_analysis_report(
@@ -220,6 +228,7 @@ def analyze(
                 scores=scores,
                 flip_rate=flip_rate,
                 case_id=case_id,
+                fused_scores=fused_scores,
             )
     except (OSError, UnicodeError, ValueError) as error:
         typer.echo(f"Error: {error}", err=True)
@@ -233,6 +242,13 @@ def analyze(
             f"{score.candidate_id:<10} {score.matches:>7} {score.observed_slots:>3} "
             f"{score.z_score:>5.2f} {score.binomial_p:>8.4g} {score.log10_lr:>9.3f}"
         )
+    if fused_scores is not None:
+        typer.echo("Log fusion (explicit demo assumptions; not calibrated):")
+        typer.echo("Candidate  Prior   Posterior       Applied evidence")
+        for item in fused_scores:
+            posterior = "Cannot distinguish" if item.posterior is None else f"{item.posterior:.6f}"
+            rationale = "; ".join(item.rationale)
+            typer.echo(f"{item.candidate_id:<10} {item.prior:>5.3f} {posterior:>14}  {rationale}")
     if not any(bit is not None for bit in observations):
         typer.echo("Finding: cannot distinguish; no slots were observed.")
     else:

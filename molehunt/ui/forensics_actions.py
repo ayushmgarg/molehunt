@@ -17,6 +17,12 @@ from molehunt.ui.forensics import (
     invisible_characters,
 )
 
+# Revealer bit mapping (SPEC C1/C2): which hidden character means what.
+BIT_MEANING = {
+    "\u200b": "C1 bit 0", "\u200c": "C1 bit 1", "\u200d": "decoy", "\u2060": "decoy",
+    "\u00a0": "C2 nbsp bit 0", "\u202f": "C2 nbsp bit 1",
+}
+
 
 @dataclass(frozen=True, slots=True)
 class EvidenceRow:
@@ -129,10 +135,17 @@ class ForensicsActions:
                 item.name,
                 item.category,
                 " ".join(f"{byte:02X}" for byte in item.utf8_bytes),
-                repr(item.character),
+                BIT_MEANING.get(item.character, "-"),
             )
             for column, value in enumerate(values):
                 self.invisible_table.setItem(row_index, column, QTableWidgetItem(value))
+        bits = "".join(
+            BIT_MEANING[item.character][-1] for item in bundle.hidden
+            if BIT_MEANING.get(item.character, "").startswith("C1 bit")
+        )
+        self.invisible_bits.setText(
+            f"C1 bit string (reading order, decoys skipped): {bits or '-'} ({len(bits)} bits)"
+        )
         self._render_byte_detail(bundle.selected)
         self.status.setText(
             f"Inspected {bundle.evidence.format}: {bundle.evidence.size_bytes} bytes; "

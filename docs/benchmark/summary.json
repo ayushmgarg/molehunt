@@ -1,0 +1,22 @@
+{
+  "runs": 25200,
+  "top1_accuracy": 0.96853,
+  "false_accusation_rate": 0.000238,
+  "outcomes": {
+    "attribute": 24006,
+    "no attribution": 1194
+  },
+  "collusion_trials": 180,
+  "collusion_innocents_accused": 0,
+  "targets": {
+    "top-1 under A1 (all strengths)": "PASS",
+    "top-1 under A2 (all strengths)": "PASS",
+    "top-1 under A3 (all strengths)": "PASS",
+    "top-1 under A4 (all strengths)": "PASS",
+    "top-1 under A5 (all strengths)": "PASS",
+    "top-1 under A1-A4 + 50% truncation": "PASS",
+    "top-1 under A7 at 0.15": "PASS",
+    "false accusation rate (decision rule)": "PASS",
+    "collusion k=2 both identified (Tardos)": "PASS"
+  }
+}

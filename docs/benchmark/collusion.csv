@@ -1,0 +1,181 @@
+master,seed,k,strategy,colluders,accused,all_caught,innocents_accused,threshold,runtime_seconds
+m1_roadmap,0,2,majority,E006 E014,E014 E006,1,0,59.75,5.795
+m1_roadmap,0,2,minority,E025 E042,E042 E025,1,0,59.38,13.501
+m1_roadmap,0,2,random,E037 E049,E037 E049,1,0,60.24,11.724
+m1_roadmap,0,3,majority,E019 E026 E041,E026,0,0,58.19,12.424
+m1_roadmap,0,3,minority,E017 E018 E043,E018,0,0,62.67,10.069
+m1_roadmap,0,3,random,E011 E036 E040,E011,0,0,59.55,5.265
+m1_roadmap,1,2,majority,E001 E005,E001 E005,1,0,60.32,9.031
+m1_roadmap,1,2,minority,E027 E036,E036 E027,1,0,61.43,13.631
+m1_roadmap,1,2,random,E018 E031,E018 E031,1,0,61.74,18.878
+m1_roadmap,1,3,majority,E024 E026 E039,E024,0,0,59.27,6.543
+m1_roadmap,1,3,minority,E030 E041 E048,,0,0,59.72,9.510
+m1_roadmap,1,3,random,E014 E026 E046,E014,0,0,61.76,7.089
+m1_roadmap,2,2,majority,E028 E039,E039 E028,1,0,60.29,9.029
+m1_roadmap,2,2,minority,E001 E039,E039 E001,1,0,59.89,7.753
+m1_roadmap,2,2,random,E001 E005,E001 E005,1,0,61.10,10.860
+m1_roadmap,2,3,majority,E043 E045 E048,E045,0,0,60.23,8.451
+m1_roadmap,2,3,minority,E003 E028 E040,E003,0,0,61.54,10.849
+m1_roadmap,2,3,random,E031 E042 E048,E031 E048,0,0,59.06,10.934
+m1_roadmap,3,2,majority,E024 E040,E040 E024,1,0,60.34,7.559
+m1_roadmap,3,2,minority,E004 E032,E032 E004,1,0,60.47,11.609
+m1_roadmap,3,2,random,E010 E039,E039 E010,1,0,60.90,14.681
+m1_roadmap,3,3,majority,E027 E045 E048,E027,0,0,60.36,13.421
+m1_roadmap,3,3,minority,E028 E029 E050,E029,0,0,63.60,8.784
+m1_roadmap,3,3,random,E015 E037 E047,E015 E037 E047,1,0,61.36,7.221
+m1_roadmap,4,2,majority,E031 E038,E031 E038,1,0,62.28,7.263
+m1_roadmap,4,2,minority,E005 E016,E005 E016,1,0,60.32,10.474
+m1_roadmap,4,2,random,E023 E033,E023 E033,1,0,61.18,11.075
+m1_roadmap,4,3,majority,E006 E016 E022,E022,0,0,62.93,9.147
+m1_roadmap,4,3,minority,E013 E031 E050,E031,0,0,63.02,10.298
+m1_roadmap,4,3,random,E028 E029 E043,E029 E028,0,0,61.88,7.292
+m1_roadmap,5,2,majority,E022 E041,E022 E041,1,0,61.72,5.677
+m1_roadmap,5,2,minority,E042 E047,E042 E047,1,0,60.25,10.382
+m1_roadmap,5,2,random,E001 E016,E016 E001,1,0,62.39,10.710
+m1_roadmap,5,3,majority,E005 E019 E049,E019 E005,0,0,59.02,18.027
+m1_roadmap,5,3,minority,E016 E038 E044,E016 E038,0,0,64.73,9.352
+m1_roadmap,5,3,random,E007 E024 E032,,0,0,61.48,8.281
+m1_roadmap,6,2,majority,E025 E040,E025 E040,1,0,59.92,9.568
+m1_roadmap,6,2,minority,E005 E008,E005 E008,1,0,57.64,14.563
+m1_roadmap,6,2,random,E012 E040,E040 E012,1,0,59.12,18.819
+m1_roadmap,6,3,majority,E010 E012 E015,E015,0,0,59.64,6.510
+m1_roadmap,6,3,minority,E024 E035 E036,E035 E024,0,0,61.31,6.006
+m1_roadmap,6,3,random,E008 E009 E025,E025 E008,0,0,60.13,7.183
+m1_roadmap,7,2,majority,E016 E050,E016 E050,1,0,60.78,12.175
+m1_roadmap,7,2,minority,E034 E049,E034 E049,1,0,58.40,15.326
+m1_roadmap,7,2,random,E005 E044,E044 E005,1,0,58.59,9.667
+m1_roadmap,7,3,majority,E005 E035 E037,E035 E005,0,0,59.90,15.015
+m1_roadmap,7,3,minority,E007 E036 E045,E036,0,0,63.48,5.361
+m1_roadmap,7,3,random,E004 E007 E037,E004,0,0,59.73,5.576
+m1_roadmap,8,2,majority,E009 E016,E009 E016,1,0,61.98,9.061
+m1_roadmap,8,2,minority,E022 E025,E025 E022,1,0,60.40,6.151
+m1_roadmap,8,2,random,E012 E031,E012 E031,1,0,59.40,6.223
+m1_roadmap,8,3,majority,E023 E030 E040,E023 E040,0,0,59.34,8.469
+m1_roadmap,8,3,minority,E011 E036 E044,,0,0,63.41,9.000
+m1_roadmap,8,3,random,E040 E042 E044,E044,0,0,61.31,9.190
+m1_roadmap,9,2,majority,E024 E045,E024 E045,1,0,61.48,6.348
+m1_roadmap,9,2,minority,E026 E043,E026,0,0,59.13,7.488
+m1_roadmap,9,2,random,E035 E037,E035 E037,1,0,58.05,6.646
+m1_roadmap,9,3,majority,E017 E030 E036,E030 E036,0,0,58.92,9.547
+m1_roadmap,9,3,minority,E016 E021 E036,E036,0,0,62.63,8.744
+m1_roadmap,9,3,random,E013 E014 E021,E013,0,0,60.83,9.155
+m2_zoning,0,2,majority,E012 E024,E024 E012,1,0,58.90,8.424
+m2_zoning,0,2,minority,E043 E050,E050 E043,1,0,60.66,6.106
+m2_zoning,0,2,random,E010 E026,E010 E026,1,0,58.16,6.151
+m2_zoning,0,3,majority,E030 E042 E048,E048,0,0,58.35,6.822
+m2_zoning,0,3,minority,E011 E014 E028,E011,0,0,63.08,5.602
+m2_zoning,0,3,random,E014 E036 E038,E014,0,0,58.80,5.173
+m2_zoning,1,2,majority,E013 E049,E049 E013,1,0,60.29,6.547
+m2_zoning,1,2,minority,E014 E031,E014 E031,1,0,61.38,7.948
+m2_zoning,1,2,random,E005 E030,E005 E030,1,0,60.75,8.684
+m2_zoning,1,3,majority,E002 E016 E029,E029,0,0,58.72,8.764
+m2_zoning,1,3,minority,E017 E041 E046,E041 E046,0,0,63.11,11.814
+m2_zoning,1,3,random,E017 E037 E043,E043,0,0,59.39,7.332
+m2_zoning,2,2,majority,E039 E045,E045 E039,1,0,61.56,7.783
+m2_zoning,2,2,minority,E016 E021,E021 E016,1,0,59.69,7.409
+m2_zoning,2,2,random,E003 E032,E003 E032,1,0,59.74,7.379
+m2_zoning,2,3,majority,E013 E048 E049,E048 E049,0,0,59.13,8.993
+m2_zoning,2,3,minority,E006 E023 E050,E050 E006 E023,1,0,60.57,7.182
+m2_zoning,2,3,random,E025 E035 E036,E025 E036,0,0,60.65,5.823
+m2_zoning,3,2,majority,E009 E023,E023 E009,1,0,62.82,6.662
+m2_zoning,3,2,minority,E029 E049,E029 E049,1,0,61.47,7.705
+m2_zoning,3,2,random,E001 E022,E022,0,0,60.44,5.837
+m2_zoning,3,3,majority,E014 E020 E028,E020,0,0,60.74,5.398
+m2_zoning,3,3,minority,E006 E015 E036,E015,0,0,61.57,5.507
+m2_zoning,3,3,random,E004 E009 E011,E009 E004,0,0,61.04,6.874
+m2_zoning,4,2,majority,E001 E037,E037 E001,1,0,59.91,5.837
+m2_zoning,4,2,minority,E006 E010,E010 E006,1,0,62.50,6.536
+m2_zoning,4,2,random,E011 E019,E011 E019,1,0,60.35,5.752
+m2_zoning,4,3,majority,E022 E041 E043,E041,0,0,60.57,5.379
+m2_zoning,4,3,minority,E012 E039 E049,E049,0,0,62.41,5.447
+m2_zoning,4,3,random,E001 E017 E020,E017,0,0,62.43,5.308
+m2_zoning,5,2,majority,E004 E006,E004 E006,1,0,61.14,7.111
+m2_zoning,5,2,minority,E015 E042,E015 E042,1,0,59.97,6.368
+m2_zoning,5,2,random,E023 E041,E041 E023,1,0,60.40,5.555
+m2_zoning,5,3,majority,E006 E030 E044,E030 E044,0,0,59.40,5.378
+m2_zoning,5,3,minority,E015 E021 E033,E033,0,0,62.01,5.433
+m2_zoning,5,3,random,E012 E013 E017,E013 E017 E012,1,0,59.21,5.444
+m2_zoning,6,2,majority,E003 E042,E003 E042,1,0,60.90,10.320
+m2_zoning,6,2,minority,E004 E043,E004 E043,1,0,59.02,5.411
+m2_zoning,6,2,random,E004 E005,E004 E005,1,0,59.72,5.435
+m2_zoning,6,3,majority,E032 E041 E044,,0,0,59.06,5.170
+m2_zoning,6,3,minority,E021 E036 E041,E041 E021,0,0,60.46,5.089
+m2_zoning,6,3,random,E007 E009 E048,E048,0,0,60.69,5.187
+m2_zoning,7,2,majority,E026 E044,E026 E044,1,0,59.74,6.433
+m2_zoning,7,2,minority,E009 E044,E009 E044,1,0,60.38,5.312
+m2_zoning,7,2,random,E008 E048,E048 E008,1,0,59.21,5.249
+m2_zoning,7,3,majority,E013 E038 E041,E013,0,0,60.14,5.439
+m2_zoning,7,3,minority,E022 E039 E044,E044 E039,0,0,61.33,5.106
+m2_zoning,7,3,random,E007 E027 E050,E007 E027,0,0,60.40,5.109
+m2_zoning,8,2,majority,E001 E008,E001 E008,1,0,59.69,6.901
+m2_zoning,8,2,minority,E023 E039,E023 E039,1,0,60.10,8.162
+m2_zoning,8,2,random,E029 E046,E029 E046,1,0,59.85,5.991
+m2_zoning,8,3,majority,E016 E041 E050,E016 E050,0,0,60.64,6.207
+m2_zoning,8,3,minority,E001 E003 E015,E015,0,0,62.87,6.018
+m2_zoning,8,3,random,E003 E047 E049,,0,0,62.22,10.006
+m2_zoning,9,2,majority,E037 E045,E037 E045,1,0,60.87,6.908
+m2_zoning,9,2,minority,E018 E039,E018 E039,1,0,58.52,8.494
+m2_zoning,9,2,random,E001 E038,E001 E038,1,0,60.98,5.451
+m2_zoning,9,3,majority,E001 E004 E012,E004 E012,0,0,60.57,5.147
+m2_zoning,9,3,minority,E002 E018 E020,E018,0,0,61.44,5.040
+m2_zoning,9,3,random,E002 E017 E019,E002 E019,0,0,60.77,5.336
+m3_acquisition,0,2,majority,E025 E038,E038 E025,1,0,59.20,7.536
+m3_acquisition,0,2,minority,E026 E038,E038 E026,1,0,58.69,8.395
+m3_acquisition,0,2,random,E026 E047,E026,0,0,58.58,6.099
+m3_acquisition,0,3,majority,E008 E034 E048,E048,0,0,57.57,5.913
+m3_acquisition,0,3,minority,E024 E027 E032,,0,0,61.01,6.084
+m3_acquisition,0,3,random,E005 E027 E042,E005,0,0,59.25,14.373
+m3_acquisition,1,2,majority,E038 E040,E040 E038,1,0,61.06,5.276
+m3_acquisition,1,2,minority,E041 E044,E044 E041,1,0,59.50,7.611
+m3_acquisition,1,2,random,E018 E044,E018 E044,1,0,58.94,6.444
+m3_acquisition,1,3,majority,E008 E025 E031,E025 E031,0,0,61.12,5.952
+m3_acquisition,1,3,minority,E017 E031 E036,E017,0,0,61.49,7.438
+m3_acquisition,1,3,random,E015 E021 E027,E027 E021,0,0,60.91,8.012
+m3_acquisition,2,2,majority,E028 E029,E029 E028,1,0,57.98,5.132
+m3_acquisition,2,2,minority,E010 E023,E023 E010,1,0,58.97,7.869
+m3_acquisition,2,2,random,E001 E018,E018 E001,1,0,60.34,6.071
+m3_acquisition,2,3,majority,E016 E023 E038,E016 E023,0,0,57.03,6.014
+m3_acquisition,2,3,minority,E005 E021 E041,,0,0,60.49,5.655
+m3_acquisition,2,3,random,E043 E045 E047,E047,0,0,59.34,8.049
+m3_acquisition,3,2,majority,E006 E017,E017 E006,1,0,60.65,5.183
+m3_acquisition,3,2,minority,E007 E041,E041 E007,1,0,59.62,5.100
+m3_acquisition,3,2,random,E019 E040,E040 E019,1,0,59.87,5.028
+m3_acquisition,3,3,majority,E025 E047 E050,E050 E025,0,0,62.57,5.007
+m3_acquisition,3,3,minority,E020 E028 E031,,0,0,64.84,10.407
+m3_acquisition,3,3,random,E013 E019 E044,E019 E013,0,0,60.47,17.221
+m3_acquisition,4,2,majority,E006 E043,E043 E006,1,0,61.07,6.142
+m3_acquisition,4,2,minority,E005 E044,E044 E005,1,0,59.27,5.702
+m3_acquisition,4,2,random,E035 E049,E035 E049,1,0,61.02,5.772
+m3_acquisition,4,3,majority,E029 E030 E045,E029 E045,0,0,58.83,11.239
+m3_acquisition,4,3,minority,E006 E009 E035,E006 E035,0,0,61.35,5.146
+m3_acquisition,4,3,random,E015 E022 E040,E022,0,0,62.50,5.231
+m3_acquisition,5,2,majority,E006 E032,E006 E032,1,0,60.32,5.257
+m3_acquisition,5,2,minority,E008 E010,E008 E010,1,0,60.55,6.004
+m3_acquisition,5,2,random,E023 E034,E034 E023,1,0,58.94,6.142
+m3_acquisition,5,3,majority,E021 E032 E040,E021 E040,0,0,59.50,5.665
+m3_acquisition,5,3,minority,E003 E013 E045,E045,0,0,60.34,5.646
+m3_acquisition,5,3,random,E011 E012 E031,E012,0,0,59.60,5.733
+m3_acquisition,6,2,majority,E017 E050,E050 E017,1,0,59.53,6.448
+m3_acquisition,6,2,minority,E024 E040,E024 E040,1,0,57.89,7.070
+m3_acquisition,6,2,random,E010 E022,E022 E010,1,0,58.69,7.898
+m3_acquisition,6,3,majority,E011 E030 E048,E048,0,0,59.57,5.100
+m3_acquisition,6,3,minority,E003 E034 E043,E003,0,0,61.45,5.455
+m3_acquisition,6,3,random,E005 E021 E034,E021 E034,0,0,58.61,5.846
+m3_acquisition,7,2,majority,E005 E023,E005 E023,1,0,58.90,12.866
+m3_acquisition,7,2,minority,E001 E011,E001 E011,1,0,59.51,5.526
+m3_acquisition,7,2,random,E007 E039,E039 E007,1,0,60.66,5.225
+m3_acquisition,7,3,majority,E017 E026 E040,E026,0,0,59.16,5.062
+m3_acquisition,7,3,minority,E007 E012 E024,E007,0,0,62.55,5.848
+m3_acquisition,7,3,random,E009 E036 E046,,0,0,59.84,3.908
+m3_acquisition,8,2,majority,E024 E028,E028 E024,1,0,61.53,8.606
+m3_acquisition,8,2,minority,E024 E030,E024 E030,1,0,59.54,5.801
+m3_acquisition,8,2,random,E003 E030,E030 E003,1,0,61.70,4.881
+m3_acquisition,8,3,majority,E007 E020 E024,E007,0,0,58.82,5.867
+m3_acquisition,8,3,minority,E007 E019 E040,,0,0,62.92,3.923
+m3_acquisition,8,3,random,E010 E016 E028,E016 E028,0,0,59.66,3.824
+m3_acquisition,9,2,majority,E016 E031,E016 E031,1,0,60.01,6.335
+m3_acquisition,9,2,minority,E017 E033,E017,0,0,61.43,6.233
+m3_acquisition,9,2,random,E008 E022,E008 E022,1,0,59.23,5.365
+m3_acquisition,9,3,majority,E031 E040 E049,E031 E049,0,0,58.69,5.669
+m3_acquisition,9,3,minority,E031 E037 E046,E046 E031,0,0,60.05,5.412
+m3_acquisition,9,3,random,E024 E036 E038,E038 E024,0,0,58.25,4.723

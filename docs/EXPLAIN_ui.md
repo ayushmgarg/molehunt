@@ -5,6 +5,7 @@
 - The issue tab registers a template and issues copies through the shared SQLite-backed API.
 - Intake stores original/working paths, the evidence hash, and the custody mirror in that registry.
 - The Casebook tab generates seeded public evidence, displays hints, checks a submitted answer against private generated truth, and records confidence grades.
+- Starting a case enables Casebook mode, which gates tabs and individual inspection actions by persisted tool unlocks; Lab mode can be restored with its checkbox.
 - The analysis view shows the candidate table, evidence hash, observed-slot count, and optional DOCX report.
 - An optional fusion CSV adds a separate posterior table with access priors and the named event factors.
 - Its slot matrix marks each candidate slot with a circle for match, cross for mismatch, and dash for erasure.

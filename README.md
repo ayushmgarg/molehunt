@@ -12,7 +12,7 @@ uv sync
 uv run molehunt --help
 ```
 
-Open the current native desktop workbench with `uv run molehunt serve`. It includes copy issuance, analysis, intake/custody, a seeded Red Team bench, a seven-case Casebook, and Evidence tools with a registry tree, byte viewer, non-printing Unicode inspection, and a master diff. Other advanced views remain in development. See `SPEC.md` and `docs/DESIGN.md` for the full target.
+Open the current native desktop workbench with `uv run molehunt serve`. It includes copy issuance, analysis, intake/custody, a seeded Red Team bench, a seven-case Casebook that locks tools to earned unlocks, and Evidence tools with a registry tree, byte viewer, non-printing Unicode inspection, and a master diff. Other advanced views remain in development. See `SPEC.md` and `docs/DESIGN.md` for the full target.
 
 ## Current engine workflow
 

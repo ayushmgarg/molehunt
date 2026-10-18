@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
+    QCheckBox,
     QComboBox,
     QDoubleSpinBox,
     QFileDialog,
@@ -76,6 +77,7 @@ def _form_page(owner, name: str) -> tuple[QWidget, QFormLayout, dict[str, QLineE
 def build_pages(owner) -> QTabWidget:
     """Build tabs and expose their widgets on the window controller."""
     tabs = QTabWidget()
+    owner.tabs = tabs
     analysis, form, fields = _form_page(owner, "analysis")
     for key, label, default in (
         ("evidence", "Evidence", ""), ("master", "Master template", ""),
@@ -85,6 +87,7 @@ def build_pages(owner) -> QTabWidget:
     ):
         _add_field(form, fields, key, label, default)
     run = QPushButton("Run analysis")
+    owner.run_analysis_button = run
     run.clicked.connect(owner._analyze)
     export = QPushButton("Write report")
     export.clicked.connect(owner._write_report)
@@ -160,6 +163,10 @@ def build_pages(owner) -> QTabWidget:
         tabs.addTab(page, title)
 
     casebook, case_form, case_fields = _form_page(owner, "casebook")
+    owner.casebook_lock = QCheckBox("Casebook mode: restrict tools to earned unlocks")
+    owner.casebook_lock.setChecked(False)
+    owner.casebook_lock.toggled.connect(owner._apply_tool_locks)
+    case_form.addRow("", owner.casebook_lock)
     case_fields["player"] = QLineEdit("player-01")
     case_form.addRow("Synthetic player ID", case_fields["player"])
     _add_field(case_form, case_fields, "database", "SQLite registry", ".molehunt/molehunt.sqlite3")
@@ -199,7 +206,6 @@ def build_pages(owner) -> QTabWidget:
     answer_row.addWidget(submit)
     casebook.layout().addLayout(answer_row)
     owner.case_selector.currentIndexChanged.connect(owner._casebook_show_selected)
-    owner._casebook_show_selected()
     tabs.addTab(casebook, "Casebook")
 
     forensic, form, fields = _form_page(owner, "forensics")
@@ -207,10 +213,13 @@ def build_pages(owner) -> QTabWidget:
     _add_field(form, fields, "evidence", "Evidence file", "")
     evidence_actions = QHBoxLayout()
     refresh_evidence = QPushButton("Refresh evidence tree")
+    owner.evidence_refresh_button = refresh_evidence
     refresh_evidence.clicked.connect(owner._evidence_refresh)
     inspect_evidence = QPushButton("Inspect selected file")
+    owner.inspect_evidence_button = inspect_evidence
     inspect_evidence.clicked.connect(owner._forensics_inspect)
     diff_evidence = QPushButton("Diff against selected master")
+    owner.diff_evidence_button = diff_evidence
     diff_evidence.clicked.connect(owner._diff)
     evidence_actions.addWidget(refresh_evidence)
     evidence_actions.addWidget(inspect_evidence)
@@ -246,17 +255,20 @@ def build_pages(owner) -> QTabWidget:
         ["Character offset", "Code point", "Unicode name", "Category", "UTF-8 bytes", "Character"]
     )
     owner.invisible_table.horizontalHeader().setStretchLastSection(True)
-    forensic.layout().addWidget(QLabel("Non-printing characters in decoded text"))
+    owner.invisible_label = QLabel("Non-printing characters in decoded text")
+    forensic.layout().addWidget(owner.invisible_label)
     forensic.layout().addWidget(owner.invisible_table)
     owner.diff_table = QTableWidget(0, 3)
     owner.diff_table.setHorizontalHeaderLabels(["Change", "Master", "Evidence"])
     owner.diff_table.horizontalHeader().setStretchLastSection(True)
-    forensic.layout().addWidget(QLabel("Master diff; variation slots render as variant A."))
+    owner.diff_label = QLabel("Master diff; variation slots render as variant A.")
+    forensic.layout().addWidget(owner.diff_label)
     forensic.layout().addWidget(owner.diff_table)
     owner.diff_variations = QTextEdit()
     owner.diff_variations.setReadOnly(True)
     owner.diff_variations.setMaximumHeight(90)
     forensic.layout().addWidget(owner.diff_variations)
     tabs.addTab(forensic, "Evidence tools")
+    owner._casebook_show_selected()
     tabs.setStyleSheet(_STYLE)
     return tabs

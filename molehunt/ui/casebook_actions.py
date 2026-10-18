@@ -46,6 +46,74 @@ class CasebookActions:
             f"Status: {status}\nAvailable tools: {tools}\n"
             "Start the case to generate its seeded evidence package."
         )
+        self._apply_tool_locks()
+
+    def _apply_tool_locks(self, _checked: bool = False) -> None:
+        """Enable only tabs and subtools earned by the selected Casebook progress."""
+        locked = self.casebook_lock.isChecked()
+        definition = self._case_definition()
+        progress = self.case_progress.get(definition.case_id)
+        tools = set(progress.unlocked_tools) if progress is not None else set()
+        if not locked:
+            for index in range(self.tabs.count()):
+                self.tabs.setTabEnabled(index, True)
+            self.evidence_tree.setVisible(True)
+            self.evidence_refresh_button.setEnabled(True)
+            self.inspect_evidence_button.setEnabled(True)
+            self.diff_evidence_button.setEnabled(True)
+            self.hex_table.setVisible(True)
+            self.byte_detail.setVisible(True)
+            self.invisible_label.setVisible(True)
+            self.invisible_table.setVisible(True)
+            self.diff_label.setVisible(True)
+            self.diff_table.setVisible(True)
+            self.diff_variations.setVisible(True)
+            self.results.setVisible(True)
+            self.fusion_results.setVisible(False)
+            self.slot_matrix.setVisible(True)
+            self.run_analysis_button.setText("Run analysis")
+            return
+
+        available = {
+            0: bool({"auto_detector", "slot_matrix"} & tools),
+            1: False,
+            2: "intake" in tools,
+            3: False,
+            4: True,
+            5: bool(
+                {
+                    "intake", "hex", "invisible", "diff", "ooxml", "image_dots",
+                    "timeline", "notes", "report",
+                }
+                & tools
+            ),
+        }
+        for index, enabled in available.items():
+            self.tabs.setTabEnabled(index, enabled)
+
+        has_intake = "intake" in tools
+        has_hex = "hex" in tools
+        has_invisible = "invisible" in tools
+        has_diff = "diff" in tools
+        has_auto_detector = "auto_detector" in tools
+        has_slot_matrix = "slot_matrix" in tools
+        self.evidence_tree.setVisible(has_intake)
+        self.evidence_refresh_button.setEnabled(has_intake)
+        self.inspect_evidence_button.setEnabled(has_hex or has_invisible)
+        self.hex_table.setVisible(has_hex)
+        self.byte_detail.setVisible(has_hex)
+        self.invisible_label.setVisible(has_invisible)
+        self.invisible_table.setVisible(has_invisible)
+        self.diff_evidence_button.setEnabled(has_diff)
+        self.diff_label.setVisible(has_diff)
+        self.diff_table.setVisible(has_diff)
+        self.diff_variations.setVisible(has_diff)
+        self.results.setVisible(has_auto_detector)
+        self.fusion_results.setVisible(has_auto_detector)
+        self.slot_matrix.setVisible(has_auto_detector or has_slot_matrix)
+        self.run_analysis_button.setText(
+            "Run analysis" if has_auto_detector else "Build slot matrix"
+        )
 
     def _case_definition(self) -> CaseDefinition:
         case_id = self.case_selector.currentData()
@@ -60,6 +128,7 @@ class CasebookActions:
             seed = int(fields["seed"].text().strip())
             if seed < 0:
                 raise ValueError("seed must not be negative")
+            self.casebook_lock.setChecked(True)
             definition = self._case_definition()
             database = self._field_path("casebook", "database")
             initialize_casebook(database, player_id, self.case_definitions)

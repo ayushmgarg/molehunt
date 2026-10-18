@@ -44,6 +44,47 @@ def test_workbench_builds_engine_tabs() -> None:
     application.processEvents()
 
 
+def test_casebook_lock_gates_tools_until_the_selected_case_unlocks_them(tmp_path) -> None:
+    application = QApplication.instance() or QApplication([])
+    window = MoleHuntWindow()
+    window.fields["casebook"]["database"].setText(str(tmp_path / "progress.sqlite3"))
+    window.fields["casebook"]["output_root"].setText(str(tmp_path / "cases"))
+    window.casebook_lock.setChecked(True)
+
+    window._casebook_start()
+    _wait_for_task(window, application)
+
+    tabs = window.centralWidget()
+    assert not tabs.isTabEnabled(0)  # ranked auto detector is not a Case 1 tool
+    assert not tabs.isTabEnabled(1)  # issuing copies is a Lab action
+    assert tabs.isTabEnabled(2)  # evidence intake is earned at Case 1
+    assert not tabs.isTabEnabled(3)
+    assert tabs.isTabEnabled(4)
+    assert tabs.isTabEnabled(5)
+    assert window.evidence_refresh_button.isEnabled()
+    assert window.inspect_evidence_button.isEnabled()
+    assert not window.diff_evidence_button.isEnabled()
+
+    truth = json.loads(window.case_instance.ground_truth_path.read_text(encoding="utf-8"))
+    window.fields["casebook"]["answer"].setText(truth["copy_owner"])
+    window._casebook_submit()
+    window.case_selector.setCurrentIndex(1)
+    window._casebook_start()
+    _wait_for_task(window, application)
+
+    assert tabs.isTabEnabled(0)  # Case 2 earns the manual slot matrix.
+    assert window.results.isHidden()  # Ranked detection remains locked until Case 5.
+    assert not window.slot_matrix.isHidden()
+    assert window.run_analysis_button.text() == "Build slot matrix"
+    assert window.diff_evidence_button.isEnabled()
+    window.casebook_lock.setChecked(False)
+    assert all(tabs.isTabEnabled(index) for index in range(tabs.count()))
+    assert not window.results.isHidden()
+    assert window.run_analysis_button.text() == "Run analysis"
+    window.close()
+    application.processEvents()
+
+
 def test_workbench_analysis_populates_candidate_slot_matrix(tmp_path) -> None:
     application = QApplication.instance() or QApplication([])
     key = bytes(range(32))

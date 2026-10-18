@@ -128,6 +128,14 @@ class AnalysisActions:
         self._analysis = bundle
         self.scores = bundle.scores
         observations = bundle.observations
+        selected = self._case_definition()
+        progress = self.case_progress.get(selected.case_id)
+        earned = set(progress.unlocked_tools) if progress is not None else set()
+        casebook_mode = self.casebook_lock.isChecked()
+        show_rankings = not casebook_mode or "auto_detector" in earned
+        show_matrix = not casebook_mode or bool({"auto_detector", "slot_matrix"} & earned)
+        self.results.setVisible(show_rankings)
+        self.slot_matrix.setVisible(show_matrix)
         self.results.setRowCount(len(self.scores))
         self.slot_matrix.setColumnCount(len(observations) + 1)
         self.slot_matrix.setHorizontalHeaderLabels(
@@ -155,7 +163,7 @@ class AnalysisActions:
                 item.setToolTip(f"Slot {index + 1}: {state}")
                 item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
                 self.slot_matrix.setItem(row_index, index + 1, item)
-        self.fusion_results.setVisible(bundle.fused_scores is not None)
+        self.fusion_results.setVisible(bundle.fused_scores is not None and show_rankings)
         if bundle.fused_scores is not None:
             self.fusion_results.setRowCount(len(bundle.fused_scores))
             for row_index, item in enumerate(bundle.fused_scores):

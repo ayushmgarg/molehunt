@@ -7,6 +7,7 @@ import re
 import shutil
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 from molehunt.custody import append_custody_entry, sha256_file
 
@@ -22,6 +23,7 @@ class IntakeResult:
     working_copy: Path
     custody_log: Path
     sha256: str
+    custody_entry: dict[str, Any]
 
 
 def _remove_tree(path: Path) -> None:
@@ -68,7 +70,7 @@ def intake_evidence(
         shutil.copyfile(original, working_copy)
         working_copy.chmod(0o644)
         custody_log = temporary / "custody.log"
-        append_custody_entry(
+        custody_entry = append_custody_entry(
             custody_log,
             digest,
             actor=actor,
@@ -85,4 +87,5 @@ def intake_evidence(
         working_copy=destination / "working" / source_path.name,
         custody_log=destination / "custody.log",
         sha256=digest,
+        custody_entry=custody_entry,
     )

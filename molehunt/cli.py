@@ -27,6 +27,8 @@ from molehunt.registry import (
     get_master_by_path,
     initialize_database,
     record_copy,
+    record_custody_entry,
+    record_evidence,
     register_master,
 )
 from molehunt.report import write_analysis_report
@@ -334,14 +336,22 @@ def intake(
     actor: Annotated[str, typer.Option("--actor", help="Synthetic examiner ID")],
     root: Annotated[Path, typer.Option("--root", help="Evidence case directory")]
     = Path("evidence"),
+    db_file: Annotated[Path, typer.Option("--db-file", help="SQLite registry path")]
+    = DEFAULT_DB,
 ) -> None:
-    """Create read-only original and writable working copy for evidence."""
+    """Stage evidence and register its hash and custody entry in SQLite."""
     try:
+        initialize_database(db_file)
         result = intake_evidence(evidence, case_id, actor=actor, root=root)
-    except (OSError, ValueError) as error:
+        evidence_id = record_evidence(
+            db_file, case_id, result.original, result.working_copy, result.sha256
+        )
+        record_custody_entry(db_file, result.custody_entry)
+    except (OSError, ValueError, sqlite3.Error) as error:
         typer.echo(f"Error: {error}", err=True)
         raise typer.Exit(code=2) from error
     typer.echo(f"Case: {result.case_id}")
+    typer.echo(f"Evidence ID: {evidence_id}")
     typer.echo(f"Original: {result.original}")
     typer.echo(f"Working copy: {result.working_copy}")
     typer.echo(f"SHA-256: {result.sha256}")

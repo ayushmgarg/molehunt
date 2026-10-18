@@ -4,6 +4,7 @@
 - It copies the file to `case/original/` and marks that copy read-only.
 - It creates a second file in `case/working/` with write permission for analysis.
 - The SHA-256 of the staged original is recorded in the case's JSONL custody log.
+- The intake CLI also stores the digest, paths, and custody-chain fields in SQLite.
 - Intake builds the case in a temporary sibling directory, then renames it into place.
 - An existing case ID is refused so the command cannot overwrite a previous case.
 - Example: identical original and working bytes produce the same SHA-256 at intake.

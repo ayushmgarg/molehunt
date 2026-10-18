@@ -269,13 +269,27 @@ def test_intake_cli_creates_case_files(tmp_path: Path) -> None:
     source = tmp_path / "leak.txt"
     source.write_text("synthetic evidence", encoding="utf-8")
     case_root = tmp_path / "cases"
+    db_path = tmp_path / "registry.sqlite3"
     result = runner.invoke(
         app,
         [
             "intake", str(source), "CASE-02", "--actor", "examiner-01", "--root", str(case_root),
+            "--db-file", str(db_path),
         ],
     )
     assert result.exit_code == 0, result.stdout
     assert (case_root / "CASE-02" / "original" / "leak.txt").is_file()
     assert (case_root / "CASE-02" / "working" / "leak.txt").is_file()
     assert "SHA-256:" in result.stdout
+    assert "Evidence ID:" in result.stdout
+    with sqlite3.connect(db_path) as connection:
+        evidence = connection.execute(
+            "SELECT case_id, sha256, working_copy_path FROM evidence"
+        ).fetchone()
+        custody = connection.execute(
+            "SELECT seq, actor, action, object_sha256 FROM custody_log"
+        ).fetchone()
+    assert evidence[0] == "CASE-02"
+    assert evidence[1] == hashlib.sha256(source.read_bytes()).hexdigest()
+    assert Path(evidence[2]).parts[-3:] == ("CASE-02", "working", "leak.txt")
+    assert custody == (1, "examiner-01", "intake", evidence[1])

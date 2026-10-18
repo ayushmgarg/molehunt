@@ -17,5 +17,5 @@ skeleton already ignores, they no longer fragment the anchors. Missing anchors o
 crossed bounds give an erasure, never a forced bit.
 
 Worked example: master `A begin now` (zw slot after "now"), suspect
-`A start now‌`. Both skeletons read `a begin now`. The lex window maps back to
-`start` (bit 1); the zero-length zw window maps to the dropped `‌` (bit 1).
+`A start now<U+200C>`. Both skeletons read `a begin now`. The lex window maps back to
+`start` (bit 1); the zero-length zw window maps to the dropped `U+200C` (bit 1).

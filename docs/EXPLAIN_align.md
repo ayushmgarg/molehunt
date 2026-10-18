@@ -1,12 +1,21 @@
 # Explain: slot alignment
 
-Alignment renders a canonical master using each slot's left variant.
-`difflib.SequenceMatcher` finds exact character blocks in the suspect text.
-The nearest matching boundaries around each source slot define a candidate window.
+Alignment renders a canonical master using each slot's bit-0 variant. Both the
+master and the suspect are then reduced to one skeleton:
 
-Short or truncated evidence can leave one boundary missing; the text edge is used.
-If boundaries cross, the slot is erased. Major rewrites may make a window broad or
-ambiguous; extraction handles that as missing evidence rather than a forced guess.
+- drop invisible format characters (Unicode category Cf, e.g. U+200B);
+- map NBSP / narrow NBSP to space, curly quotes and dashes to ASCII;
+- fold Cyrillic/Greek look-alikes to Latin, lower-case everything;
+- rewrite every authored word variant (lex, spl, dat, num) to its bit-0 form.
 
-Worked example: the canonical `A begin. Then B` and suspect `A start. Then B`
-share text before and after the slot. The window contains only `start`.
+Every skeleton character keeps the original span it came from. `difflib.SequenceMatcher`
+finds exact blocks between the two skeletons; a slot's skeleton bounds go through
+the nearest block and back to an original window in the suspect.
+
+Because attacks such as A1 (strip) or A3 (collapse) change only characters the
+skeleton already ignores, they no longer fragment the anchors. Missing anchors or
+crossed bounds give an erasure, never a forced bit.
+
+Worked example: master `A begin now` (zw slot after "now"), suspect
+`A start now‌`. Both skeletons read `a begin now`. The lex window maps back to
+`start` (bit 1); the zero-length zw window maps to the dropped `‌` (bit 1).

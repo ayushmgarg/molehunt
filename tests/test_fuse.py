@@ -3,7 +3,7 @@
 import pytest
 
 from molehunt.detect.fuse import EVENT_FACTORS, fuse_scores
-from molehunt.detect.score import CandidateScore
+from molehunt.detect.score import CandidateScore, score_candidates
 
 
 def scores():
@@ -43,3 +43,12 @@ def test_unknown_access_and_event_are_rejected() -> None:
         fuse_scores(scores(), {"E1": "unknown"})
     with pytest.raises(ValueError, match="event factor"):
         fuse_scores(scores(), {"E1": "direct"}, {"E1": ["unlisted_event"]})
+
+
+def test_sensitivity_reports_top_under_weaker_and_stronger_factors() -> None:
+    from molehunt.detect.fuse import fusion_sensitivity
+
+    scores = score_candidates([1, 0, 1, 0], {"E1": [1, 0, 1, 0], "E2": [1, 0, 1, 0]})
+    access = {"E1": "direct", "E2": "direct"}
+    tops = fusion_sensitivity(scores, access, {"E1": ["print_job"]})
+    assert tops == {0.5: "E1", 2.0: "E1"}

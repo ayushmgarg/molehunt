@@ -23,7 +23,7 @@ from molehunt.cli_app import (
     split_list,
 )
 from molehunt.core.keys import KEY_BYTES, load_or_create_key
-from molehunt.detect.fuse import fuse_scores
+from molehunt.detect.fuse import fuse_scores, fusion_sensitivity
 from molehunt.detect.ingest import ingest
 from molehunt.detect.logs import read_fusion_logs
 from molehunt.game.logs_gen import synthetic_roster, write_roster_csv
@@ -243,6 +243,11 @@ def analyze(
             posterior = "Cannot distinguish" if item.posterior is None else f"{item.posterior:.6f}"
             typer.echo(f"{item.candidate_id:<10} {item.prior:>5.3f} {posterior:>14}  "
                        f"{'; '.join(item.rationale)}")
+        tops = fusion_sensitivity(result.scores, evidence_logs.access, evidence_logs.events)
+        steady = len(set(tops.values())) == 1 and fused[0].candidate_id in tops.values()
+        typer.echo("Sensitivity (event factors weakened x0.5 / strengthened x2 in log): "
+                   + ", ".join(f"{scale:g} -> {top}" for scale, top in tops.items())
+                   + ("; top unchanged" if steady else "; TOP DEPENDS ON THE ASSUMED WEIGHTS"))
     typer.echo(f"Finding ({decision.outcome}): {decision.statement}")
     if report_path is not None:
         typer.echo(f"Report: {report_path}")

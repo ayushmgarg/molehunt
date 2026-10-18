@@ -34,10 +34,12 @@ def fuse_scores(
     scores: Sequence[CandidateScore],
     access: Mapping[str, str],
     events: Mapping[str, Sequence[str]] | None = None,
+    factors: Mapping[str, float] | None = None,
 ) -> tuple[FusedScore, ...]:
     """Fuse normalized access weights, named event multipliers, and LR in log space."""
     if not scores:
         raise ValueError("at least one candidate score is required")
+    table = factors or EVENT_FACTORS
     event_map = events or {}
     base_weights: dict[str, float] = {}
     factors_by_candidate: dict[str, tuple[str, ...]] = {}
@@ -49,14 +51,14 @@ def fuse_scores(
             raise ValueError(f"unknown access level: {access_level}")
         base = ACCESS_PRIORS[access_level]
         event_ids = tuple(event_map.get(score.candidate_id, ()))
-        unknown = [event for event in event_ids if event not in EVENT_FACTORS]
+        unknown = [event for event in event_ids if event not in table]
         if unknown:
             raise ValueError(f"unknown event factor: {unknown[0]}")
-        multiplier = math.prod(EVENT_FACTORS[event] for event in event_ids)
+        multiplier = math.prod(table[event] for event in event_ids)
         weight = base * multiplier
         base_weights[score.candidate_id] = base
         factors_by_candidate[score.candidate_id] = tuple(
-            f"{event} ×{EVENT_FACTORS[event]:g}" for event in event_ids
+            f"{event} ×{table[event]:g}" for event in event_ids
         )
         rationale = [
             "direct access" if access_level == "direct" else
@@ -111,3 +113,24 @@ def fuse_scores(
             ),
         )
     )
+
+
+
+def fusion_sensitivity(
+    scores: Sequence[CandidateScore],
+    access: Mapping[str, str],
+    events: Mapping[str, Sequence[str]] | None = None,
+    scales: Sequence[float] = (0.5, 2.0),
+) -> dict[float, str | None]:
+    """Top candidate when every event factor f becomes f ** scale.
+
+    Scale 0.5 weakens each factor (3 -> 1.73), 2.0 strengthens it (3 -> 9). If the
+    top candidate is the same at every scale, the finding does not hinge on the
+    exact assumed weights.
+    """
+    tops: dict[float, str | None] = {}
+    for scale in scales:
+        table = {name: value ** scale for name, value in EVENT_FACTORS.items()}
+        ranked = fuse_scores(scores, access, events, factors=table)
+        tops[scale] = ranked[0].candidate_id if ranked[0].posterior is not None else None
+    return tops

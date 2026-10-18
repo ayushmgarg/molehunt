@@ -49,3 +49,4 @@
 - Forged channels: a genuine copy's bits are keyed random (about half 0). If a channel's reads are almost all one value (two-sided binomial p < 1e-6, at least 12 reads), the channel was normalised (A4/A6) and its reads become erasures. This turns dictionary-canonicalisation false accusations into "no attribution".
 - Shuffled paragraphs (A9): suspect paragraphs are put back in master order by word-set overlap (Jaccard) before alignment; windows map back to original offsets.
 - Full-variant flipping (A10 at strength 1) is left as measured: an attacker who can flip every pair already holds the dictionary, and the copy then reads as noise.
+- Fusion weights stay documented assumptions (no labelled real incidents exist to measure them). `analyze --logs` now prints a sensitivity line: the top candidate when every event factor f becomes f^0.5 and f^2. If the top changes, the output says the conclusion depends on the assumed weights.

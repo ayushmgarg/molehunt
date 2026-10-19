@@ -78,7 +78,9 @@ class LiveState:
         if suffix not in ALLOWED:
             raise ValueError("upload must be .txt, .md, .docx, .png, or .jpg")
         with self.lock:
-            number = len(self.leaks) + 1
+            existing = [int(path.name.split("-")[1]) for path in
+                        (self.workdir / "evidence").glob("LIVE-[0-9][0-9][0-9]")]
+            number = max([len(self.leaks), *existing]) + 1
             case_id = f"LIVE-{number:03d}"
             upload = self.workdir / "uploads" / f"{case_id}{suffix}"
             upload.parent.mkdir(parents=True, exist_ok=True)

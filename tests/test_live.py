@@ -69,3 +69,15 @@ def test_wrong_pin_and_bad_requests_are_refused(server) -> None:
     with pytest.raises(urllib.error.HTTPError) as caught:
         _post(base + "/leak", form, "application/x-www-form-urlencoded")
     assert caught.value.code == 400
+
+
+def test_several_leaks_in_a_row_and_after_restart(server, tmp_path) -> None:
+    state, base = server
+    for _ in range(3):
+        form = urllib.parse.urlencode({"text": "some unrelated leaked words " * 5,
+                                       "pin": state.pin}).encode()
+        _post(base + "/leak", form, "application/x-www-form-urlencoded")
+    assert [item["case"] for item in state.leaks] == ["LIVE-001", "LIVE-002", "LIVE-003"]
+    state.leaks.clear()  # a restarted server keeps numbering after existing cases
+    form = urllib.parse.urlencode({"text": "another leak " * 5, "pin": state.pin}).encode()
+    assert "LIVE-004" in _post(base + "/leak", form, "application/x-www-form-urlencoded").decode()

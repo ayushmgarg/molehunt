@@ -35,5 +35,5 @@ def intake_case(
     evidence_id = record_evidence(
         database, case_id, result.original, result.working_copy, result.sha256
     )
-    record_custody_entry(database, result.custody_entry)
+    record_custody_entry(database, result.custody_entry, ledger=str(result.custody_log))
     return RegisteredIntake(result, evidence_id)

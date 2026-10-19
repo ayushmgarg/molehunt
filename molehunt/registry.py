@@ -50,9 +50,10 @@ CREATE TABLE IF NOT EXISTS evidence (
     sha256 TEXT NOT NULL, intake_ts TEXT NOT NULL, working_copy_path TEXT NOT NULL
 );
 CREATE TABLE IF NOT EXISTS custody_log (
-    seq INTEGER PRIMARY KEY, ts TEXT NOT NULL, actor TEXT NOT NULL,
+    id INTEGER PRIMARY KEY AUTOINCREMENT, ledger TEXT NOT NULL DEFAULT 'default',
+    seq INTEGER NOT NULL, ts TEXT NOT NULL, actor TEXT NOT NULL,
     action TEXT NOT NULL, object_sha256 TEXT NOT NULL, details TEXT NOT NULL,
-    prev_hash TEXT NOT NULL, entry_hash TEXT NOT NULL
+    prev_hash TEXT NOT NULL, entry_hash TEXT NOT NULL, UNIQUE (ledger, seq)
 );
 CREATE TABLE IF NOT EXISTS cases (
     case_id TEXT PRIMARY KEY, player_id TEXT NOT NULL, seed INTEGER NOT NULL,
@@ -82,6 +83,26 @@ def _connect(path: str | Path) -> sqlite3.Connection:
     return connection
 
 
+def _migrate_custody(connection: sqlite3.Connection) -> None:
+    """Old registries keyed custody rows by seq alone; every case log starts at
+    seq 1, so a second intake collided. Re-key rows by (ledger, seq)."""
+    columns = {row[1] for row in connection.execute("PRAGMA table_info(custody_log)")}
+    if "ledger" in columns:
+        return
+    connection.executescript(
+        "ALTER TABLE custody_log RENAME TO custody_log_v1;"
+        "CREATE TABLE custody_log (id INTEGER PRIMARY KEY AUTOINCREMENT, "
+        "ledger TEXT NOT NULL DEFAULT 'default', seq INTEGER NOT NULL, ts TEXT NOT NULL, "
+        "actor TEXT NOT NULL, action TEXT NOT NULL, object_sha256 TEXT NOT NULL, "
+        "details TEXT NOT NULL, prev_hash TEXT NOT NULL, entry_hash TEXT NOT NULL, "
+        "UNIQUE (ledger, seq));"
+        "INSERT INTO custody_log(ledger, seq, ts, actor, action, object_sha256, details, "
+        "prev_hash, entry_hash) SELECT 'default', seq, ts, actor, action, object_sha256, "
+        "details, prev_hash, entry_hash FROM custody_log_v1;"
+        "DROP TABLE custody_log_v1;"
+    )
+
+
 def initialize_database(path: str | Path) -> Path:
     """Create the project registry tables idempotently and return its path."""
     database = Path(path)
@@ -92,6 +113,7 @@ def initialize_database(path: str | Path) -> Path:
             "CREATE TABLE IF NOT EXISTS schema_meta "
             "(version INTEGER PRIMARY KEY, applied_at TEXT NOT NULL)"
         )
+        _migrate_custody(connection)
         progress_columns = {
             row[1] for row in connection.execute("PRAGMA table_info(progress)")
         }
@@ -230,8 +252,10 @@ def record_evidence(
     return evidence_id
 
 
-def record_custody_entry(database: str | Path, entry: dict[str, object]) -> None:
-    """Mirror a verified JSONL custody event into the SQLite registry."""
+def record_custody_entry(
+    database: str | Path, entry: dict[str, object], ledger: str = "default"
+) -> None:
+    """Mirror a verified JSONL custody event into SQLite, keyed by (ledger, seq)."""
     required = (
         "seq", "ts", "actor", "action", "object_sha256", "details", "prev_hash", "entry_hash"
     )
@@ -239,7 +263,7 @@ def record_custody_entry(database: str | Path, entry: dict[str, object]) -> None
         raise ValueError("custody entry is missing required chain fields")
     with _connect(database) as connection:
         connection.execute(
-            "INSERT INTO custody_log(seq, ts, actor, action, object_sha256, details, "
-            "prev_hash, entry_hash) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-            tuple(entry[field] for field in required),
+            "INSERT INTO custody_log(ledger, seq, ts, actor, action, object_sha256, details, "
+            "prev_hash, entry_hash) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (ledger, *(entry[field] for field in required)),
         )

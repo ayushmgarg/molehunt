@@ -33,3 +33,37 @@ def test_intake_case_persists_matching_evidence_and_custody_records(tmp_path: Pa
         str(result.intake.working_copy.resolve()),
     )
     assert custody == (1, "examiner-01", "intake", digest, result.intake.custody_entry["entry_hash"])
+
+
+def test_second_and_later_intakes_share_one_registry(tmp_path) -> None:
+    import sqlite3
+
+    from molehunt.intake_service import intake_case
+
+    database = tmp_path / "registry.sqlite3"
+    for number in (1, 2, 3):
+        source = tmp_path / f"leak{number}.txt"
+        source.write_text(f"leak {number}", encoding="utf-8")
+        intake_case(source, f"C-{number}", actor="EX-01", root=tmp_path / "evidence",
+                    database=database)
+    with sqlite3.connect(database) as connection:
+        rows = connection.execute("SELECT seq FROM custody_log").fetchall()
+    assert rows == [(1,), (1,), (1,)]
+
+
+def test_old_registry_is_migrated_without_losing_custody_rows(tmp_path) -> None:
+    import sqlite3
+
+    from molehunt.registry import initialize_database
+
+    database = tmp_path / "old.sqlite3"
+    with sqlite3.connect(database) as connection:
+        connection.execute(
+            "CREATE TABLE custody_log (seq INTEGER PRIMARY KEY, ts TEXT NOT NULL, actor TEXT "
+            "NOT NULL, action TEXT NOT NULL, object_sha256 TEXT NOT NULL, details TEXT NOT "
+            "NULL, prev_hash TEXT NOT NULL, entry_hash TEXT NOT NULL)")
+        connection.execute("INSERT INTO custody_log VALUES (1,'t','a','intake','h','d','p','e')")
+    initialize_database(database)
+    with sqlite3.connect(database) as connection:
+        assert connection.execute("SELECT ledger, seq, action FROM custody_log").fetchall() == [
+            ("default", 1, "intake")]

@@ -44,7 +44,7 @@ def custody_add(
         initialize_database(db_file)
         digest = sha256_file(evidence)
         entry = append_custody_entry(ledger, digest, actor=actor, action=action, details=details)
-        record_custody_entry(db_file, entry)
+        record_custody_entry(db_file, entry, ledger=str(ledger))
     except (OSError, ValueError, sqlite3.Error) as error:
         fail(error)
     typer.echo(f"Recorded seq {entry['seq']} for SHA-256 {digest}")

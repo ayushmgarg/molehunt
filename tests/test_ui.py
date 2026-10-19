@@ -24,8 +24,12 @@ def _wait_for_task(window: MoleHuntWindow, application: QApplication) -> None:
     assert thread is not None
     completed = QEventLoop()
     thread.finished.connect(completed.quit)
-    QTimer.singleShot(10000, completed.quit)
+    guard = QTimer()
+    guard.setSingleShot(True)
+    guard.timeout.connect(completed.quit)
+    guard.start(10000)
     completed.exec()
+    guard.stop()
     application.processEvents()
     assert window._thread is None
 

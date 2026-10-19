@@ -29,8 +29,12 @@ def test_workbench_loads_filters_and_pins_timeline_events(tmp_path) -> None:
     assert thread is not None
     loop = QEventLoop()
     thread.finished.connect(loop.quit)
-    QTimer.singleShot(10000, loop.quit)
+    guard = QTimer()
+    guard.setSingleShot(True)
+    guard.timeout.connect(loop.quit)
+    guard.start(10000)
     loop.exec()
+    guard.stop()
     application.processEvents()
     assert window._thread is None
     assert window.timeline_table.rowCount() == 3

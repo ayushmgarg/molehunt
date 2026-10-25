@@ -50,3 +50,17 @@
 - Shuffled paragraphs (A9): suspect paragraphs are put back in master order by word-set overlap (Jaccard) before alignment; windows map back to original offsets.
 - Full-variant flipping (A10 at strength 1) is left as measured: an attacker who can flip every pair already holds the dictionary, and the copy then reads as noise.
 - Fusion weights stay documented assumptions (no labelled real incidents exist to measure them). `analyze --logs` now prints a sensitivity line: the top candidate when every event factor f becomes f^0.5 and f^2. If the top changes, the output says the conclusion depends on the assumed weights.
+
+## Revamp (forensic extras and LAN games)
+
+- Canary facts use a sentinel (`§i§`) in the master rather than a new template node,
+  so the slot allocator and aligner are unchanged. Match/mismatch probabilities 0.95/0.05
+  are stated assumptions, not measured.
+- Scrub verdict counts independent layers hit (>= 3 = deliberate) instead of a
+  weighted score: simplest rule that is easy to defend.
+- Lineage reuses the ordinary codeword at depth 0, so existing copies and the
+  benchmark are unaffected. Layer split 50/25/25, max three hops.
+- Forwarding assumes the copy is re-stamped by the system (gateway model). A copy
+  forwarded outside the system keeps its parent's fingerprint only.
+- The heatmap re-runs alignment on the masked leak to get window positions for
+  erased slots; it costs one extra alignment per leak.

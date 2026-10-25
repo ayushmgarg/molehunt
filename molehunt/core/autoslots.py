@@ -24,6 +24,7 @@ from typing import Any
 
 import yaml
 
+from molehunt.core.canaries import CanaryFamily, parse_canaries
 from molehunt.core.keys import keyed_order
 from molehunt.core.slots import Slot, allocate_slots
 from molehunt.core.template import Choice, Literal, Node, Template, parse_template
@@ -40,7 +41,7 @@ HOMOGLYPH_PAIRS = {
 }
 _WORD = re.compile(r"[A-Za-z]{3,}")
 _FRONT = re.compile(r"\A---\r?\n(?P<yaml>.*?)\r?\n---\r?\n", re.DOTALL)
-_ALLOWED_FRONT = {"auto_slots", "title"}
+_ALLOWED_FRONT = {"auto_slots", "title", "canaries"}
 
 
 @dataclass(frozen=True, slots=True)
@@ -50,6 +51,7 @@ class PreparedMaster:
     template: Template
     slots: tuple[Slot, ...]
     auto_counts: dict[str, int]
+    canaries: tuple[CanaryFamily, ...] = ()
 
 
 def split_front_matter(source: str) -> tuple[dict[str, Any], str]:
@@ -136,13 +138,14 @@ def insert_auto_slots(template: Template, key: bytes, counts: dict[str, int]) ->
 
 
 def prepare_master(source: str, key: bytes) -> PreparedMaster:
-    """Parse front matter and body, insert declared auto slots, then allocate keys."""
+    """Parse front matter and body, place canary sentinels, insert auto slots, allocate keys."""
     settings, body = split_front_matter(source)
     counts = _counts(settings)
+    body, canaries = parse_canaries(settings.get("canaries"), body)
     template = parse_template(body)
     if any(counts.values()):
         template = insert_auto_slots(template, key, counts)
-    return PreparedMaster(template, allocate_slots(template, key), counts)
+    return PreparedMaster(template, allocate_slots(template, key), counts, canaries)
 
 
 def master_title(source: str) -> str | None:

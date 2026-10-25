@@ -13,6 +13,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
 from molehunt.core.autoslots import PreparedMaster, prepare_master
+from molehunt.core.canaries import mask
 from molehunt.core.codes import Codeword, generate_codewords
 from molehunt.core.keys import KEY_BYTES
 from molehunt.core.tardos import (
@@ -67,7 +68,10 @@ class AnalysisResult:
 
 
 def observe(prepared: PreparedMaster, text: str) -> tuple[tuple[SlotObservation, ...], tuple]:
-    """Align and extract; return raw observations and bits in codeword order."""
+    """Align and extract; return raw observations and bits in codeword order.
+
+    Canary facts in the suspect text are first turned back into master sentinels."""
+    text = mask(text, prepared.canaries)
     extracted = extract_variants(text, align_to_master(prepared.template, prepared.slots, text))
     by_index = {item.slot_index: item.bit for item in extracted}
     return extracted, tuple(by_index[index] for index in range(len(prepared.slots)))

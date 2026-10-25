@@ -4,7 +4,7 @@ PDF and PNG copies use the monospace OCR font so a scan can be read back."""
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from datetime import datetime
 from io import BytesIO
 from xml.sax.saxutils import escape
@@ -13,14 +13,18 @@ from docx import Document
 
 from molehunt.channels.docx_meta import embed_docx_metadata
 from molehunt.channels.printdots import ROWS, DotMetadata, encode_dot_grid
+from molehunt.core.canaries import fill
 from molehunt.core.keys import digest
 from molehunt.core.slots import Slot, bits_in_source_order
 from molehunt.core.template import Template
 
+Facts = Mapping[str, str] | None
 
-def render_text(template: Template, slots: Sequence[Slot], codeword: Sequence[int]) -> str:
-    """Render the selected variants in template order from indexed code bits."""
-    return template.render(bits_in_source_order(slots, codeword))
+
+def render_text(template: Template, slots: Sequence[Slot], codeword: Sequence[int],
+                canary: Facts = None) -> str:
+    """Render the selected variants in template order, then fill canary facts."""
+    return fill(template.render(bits_in_source_order(slots, codeword)), canary)
 
 
 def render_txt(template: Template, slots: Sequence[Slot], codeword: Sequence[int]) -> bytes:
@@ -34,10 +38,11 @@ def render_docx(
     codeword: Sequence[int],
     key: bytes,
     employee_id: str,
+    canary: Facts = None,
 ) -> bytes:
     """Create a simple DOCX copy and add the keyed C6 metadata channel."""
     document = Document()
-    text = render_text(template, slots, codeword)
+    text = render_text(template, slots, codeword, canary)
     for line in text.split("\n"):
         document.add_paragraph(line)
     output = BytesIO()
@@ -58,6 +63,7 @@ def render_pdf(
     metadata: DotMetadata,
     *,
     cell: float = 4.0,
+    canary: Facts = None,
 ) -> bytes:
     """Typeset the copy with reportlab and tile faint yellow C7 dot grids per page.
 
@@ -93,7 +99,7 @@ def render_pdf(
     styles = getSampleStyleSheet()
     body = styles["BodyText"].clone("mono", fontName="MoleHuntMono", fontSize=10, leading=16)
     story = []
-    for line in render_text(template, slots, codeword).split("\n"):
+    for line in render_text(template, slots, codeword, canary).split("\n"):
         story.append(Paragraph(escape(line), body) if line.strip()
                      else Spacer(1, 6))
     output = BytesIO()
@@ -103,12 +109,12 @@ def render_pdf(
 
 
 def render_png(template: Template, slots: Sequence[Slot], codeword: Sequence[int],
-               metadata: DotMetadata) -> bytes:
+               metadata: DotMetadata, canary: Facts = None) -> bytes:
     """A print-like page image: OCR font text plus a yellow C7 grid in the margin."""
     from molehunt.channels.ocr import render_page
     from molehunt.channels.printdots import render_dot_grid
 
-    page = render_page(render_text(template, slots, codeword))
+    page = render_page(render_text(template, slots, codeword, canary))
     marked = render_dot_grid(page, metadata, origin=(20, 20), cell_size=6, radius=1,
                              color="#F2D400")
     output = BytesIO()

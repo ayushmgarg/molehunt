@@ -35,6 +35,7 @@ include = ["molehunt*"]
 
 [tool.setuptools.package-data]
 "molehunt.game.cases" = ["*.yaml"]
+"molehunt.web" = ["static/*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

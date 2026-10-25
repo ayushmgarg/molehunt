@@ -35,7 +35,9 @@ def _post(url: str, data: bytes, kind: str) -> bytes:
 
 def test_issue_leak_and_board_round_trip(server) -> None:
     state, base = server
-    page = urllib.request.urlopen(base + "/", timeout=10).read().decode()
+    home = urllib.request.urlopen(base + "/", timeout=10).read().decode()
+    assert "Find the Mole" in home and "/lab" in home
+    page = urllib.request.urlopen(base + "/lab", timeout=10).read().decode()
     assert "Get your copy" in page and "E012" in page
     form = urllib.parse.urlencode({"employee": "E005", "format": "txt", "pin": state.pin})
     copy = _post(base + "/issue", form.encode(), "application/x-www-form-urlencoded")
@@ -48,6 +50,7 @@ def test_issue_leak_and_board_round_trip(server) -> None:
             f"--{boundary}--\r\n").encode()
     result = _post(base + "/leak", body, f"multipart/form-data; boundary={boundary}").decode()
     assert "LIVE-001" in result and "copy issued to E005" in result
+    assert "Heatmap" in result and "id=meter" in result
 
     board = json.loads(urllib.request.urlopen(base + "/board.json", timeout=10).read())
     assert board[0]["outcome"] == "attribute" and board[0]["top"] == "E005"

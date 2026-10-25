@@ -1,12 +1,11 @@
-"""Live LAN demo: one laptop hosts, others request copies and upload leaks.
+"""Live LAN mode: the forensic lab state, plus the factory that builds the server.
 
-Opt-in exception to the no-network rule (logged in docs/DECISIONS.md). The host
-runs a stdlib ``ThreadingHTTPServer``. Every action needs a 6-digit PIN shown on
-the host screen. Routes: ``/`` join page, ``/issue`` (POST: employee id + format
--> fingerprinted copy download), ``/leak`` (POST: uploaded file or pasted text ->
-intake with hash + custody, then analysis), ``/board`` (host dashboard, refreshes
-itself), ``/board.json``. Uploads are capped at 2 MB, saved under generated
-names (no client path is trusted), and only .txt/.md/.docx/.png are accepted.
+Opt-in exception to the no-network rule (logged in docs/DECISIONS.md). The lab
+issues fingerprinted copies and examines uploaded leaks: every upload is taken in
+as evidence first (SHA-256, read-only original, custody entry), then examined
+with ``forensics.examine`` (fingerprint, canaries, scrub check, heatmap, tree).
+Uploads are capped at 2 MB, saved under generated names (no client path is
+trusted), and only .txt/.md/.docx/.png/.jpg are accepted.
 A PNG is read with the classical OCR and attributed like text; if it holds no
 readable text, its C7 dots are decoded and the station byte is matched against
 each employee's keyed station id, naming candidate copies.
@@ -14,25 +13,20 @@ each employee's keyed station id, naming candidate copies.
 
 from __future__ import annotations
 
-import hmac
-import json
 import secrets
 import threading
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from email.parser import BytesParser
-from email.policy import default as email_policy
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from http.server import ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import parse_qs
 
-from molehunt.analysis import analyze_text, evidence_text
+from molehunt.analysis import evidence_text
 from molehunt.channels.dot_locate import scan_dot_grid
 from molehunt.core.keys import digest
 from molehunt.detect.ingest import ingest
+from molehunt.forensics import Examination, examine
 from molehunt.intake_service import intake_case
 from molehunt.issuance import issue_registered_copy, register_master_file
-from molehunt.live_pages import board_page, join_page, result_page
 from molehunt.registry import get_master, initialize_database
 
 MAX_UPLOAD = 2 * 1024 * 1024
@@ -50,7 +44,9 @@ class LiveState:
     workdir: Path
     pin: str = field(default_factory=lambda: f"{secrets.randbelow(10**6):06d}")
     master_id: str = "LIVE"
+    host_key: str = field(default_factory=lambda: secrets.token_urlsafe(9))
     leaks: list[dict] = field(default_factory=list)
+    findings: dict[str, Examination] = field(default_factory=dict)
     lock: threading.Lock = field(default_factory=threading.Lock)
 
     def prepare(self) -> None:
@@ -94,10 +90,10 @@ class LiveState:
         if suffix in {".png", ".jpg", ".jpeg"} and len(text.split()) < 20:
             record.update(self._dots(upload))
         else:
-            result = analyze_text(self.master.read_text(encoding="utf-8"), self.key,
-                                  self.roster, text)
-            decision = result.decision()
+            found = examine(self.master.read_text(encoding="utf-8"), self.key, self.roster, text)
+            result, decision = found.result, found.decision
             top = result.scores[0]
+            self.findings[case_id] = found
             record.update({
                 "outcome": decision.outcome, "top": top.candidate_id,
                 "log10_lr": round(top.log10_lr, 2),
@@ -125,79 +121,20 @@ class LiveState:
                 "ranking": []}
 
 
-def _handler(state: LiveState) -> type[BaseHTTPRequestHandler]:
-    class Handler(BaseHTTPRequestHandler):
-        def _send(self, body: bytes, kind: str = "text/html; charset=utf-8",
-                  status: int = 200, extra: dict | None = None) -> None:
-            self.send_response(status)
-            self.send_header("Content-Type", kind)
-            self.send_header("Content-Length", str(len(body)))
-            for header, value in (extra or {}).items():
-                self.send_header(header, value)
-            self.end_headers()
-            self.wfile.write(body)
+def make_server(state: LiveState, host: str, port: int, *, game=None, escape=None,
+                join_urls: tuple[str, ...] = ()) -> ThreadingHTTPServer:
+    """Create (not start) the LAN server with the hub, lab, and optional games."""
+    from molehunt.web.escape_app import escape_app
+    from molehunt.web.game_app import game_app
+    from molehunt.web.hub import Site, hub_app
+    from molehunt.web.lab_app import lab_app
+    from molehunt.web.server import serve
 
-        def log_message(self, *_args) -> None:  # keep the host console quiet
-            return
-
-        def _pin_ok(self, value: str) -> bool:
-            return hmac.compare_digest(value.strip(), state.pin)
-
-        def do_GET(self) -> None:
-            path = self.path.split("?", 1)[0]
-            if path == "/":
-                self._send(join_page(state.roster).encode())
-            elif path == "/board":
-                self._send(board_page(state.leaks).encode())
-            elif path == "/board.json":
-                self._send(json.dumps(state.leaks).encode(), "application/json")
-            else:
-                self._send(b"not found", "text/plain", 404)
-
-        def do_POST(self) -> None:
-            length = int(self.headers.get("Content-Length") or 0)
-            if length > MAX_UPLOAD:
-                self._send(b"upload too large (2 MB limit)", "text/plain", 413)
-                return
-            body = self.rfile.read(length)
-            kind = self.headers.get("Content-Type", "")
-            try:
-                if kind.startswith("multipart/form-data"):
-                    message = BytesParser(policy=email_policy).parsebytes(
-                        f"Content-Type: {kind}\r\n\r\n".encode() + body)
-                    form = {part.get_param("name", header="content-disposition"): part
-                            for part in message.iter_parts()}
-                    fields = {k: v.get_content() for k, v in form.items()
-                              if not v.get_filename()}
-                    upload = next((v for v in form.values() if v.get_filename()), None)
-                else:
-                    fields = {k: v[0] for k, v in parse_qs(body.decode("utf-8")).items()}
-                    upload = None
-                fields = {k: v if isinstance(v, str) else v.decode() for k, v in fields.items()}
-                if not self._pin_ok(fields.get("pin", "")):
-                    self._send(b"wrong PIN", "text/plain", 403)
-                    return
-                if self.path == "/issue":
-                    copy = state.issue(fields.get("employee", ""), fields.get("format", "txt"))
-                    self._send(copy.read_bytes(), "application/octet-stream", extra={
-                        "Content-Disposition": f'attachment; filename="{copy.name}"'})
-                elif self.path == "/leak":
-                    if upload is not None and upload.get_payload(decode=True):
-                        name, data = upload.get_filename(), upload.get_payload(decode=True)
-                    else:
-                        name, data = "pasted.txt", fields.get("text", "").encode("utf-8")
-                    if not data.strip():
-                        raise ValueError("nothing uploaded")
-                    self._send(result_page(state.analyse(name, data)).encode())
-                else:
-                    self._send(b"not found", "text/plain", 404)
-            except (ValueError, OSError) as error:
-                self._send(f"error: {error}".encode(), "text/plain", 400)
-
-    return Handler
-
-
-def make_server(state: LiveState, host: str, port: int) -> ThreadingHTTPServer:
-    """Create (not start) the HTTP server for the live demo."""
     state.prepare()
-    return ThreadingHTTPServer((host, port), _handler(state))
+    site = Site(state.pin, state.host_key, join_urls)
+    apps = [hub_app(site), lab_app(state, site)]
+    if game is not None:
+        apps.append(game_app(game, site))
+    if escape is not None:
+        apps.append(escape_app(escape, site))
+    return serve(apps, host, port)

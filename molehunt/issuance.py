@@ -9,8 +9,9 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from molehunt.core.autoslots import master_title, prepare_master
-from molehunt.core.codes import generate_codewords
+from molehunt.core.canaries import holder_values
 from molehunt.core.keys import KEY_BYTES
+from molehunt.core.lineage import SEP, path_codeword
 from molehunt.core.render import (
     pdf_dot_metadata,
     render_docx,
@@ -93,22 +94,24 @@ def issue_registered_copy(
     prepared = prepare_master(source, key)
     template, slots = prepared.template, prepared.slots
     if code == "single":
-        bits = generate_codewords(key, [employee_id], len(slots))[employee_id]
+        bits = path_codeword(key, employee_id.split(SEP), len(slots))
     elif code == "tardos":
         bits = generate_tardos_codeword(key, employee_id, generate_tardos_biases(key, len(slots)))
     else:
         raise ValueError("code must be 'single' or 'tardos'")
     output = Path(output_path)
+    facts = holder_values(prepared.canaries, key, employee_id)
     if output.suffix.casefold() == ".png":
         content = render_png(template, slots, bits,
-                             pdf_dot_metadata(key, employee_id, datetime.now(UTC)))
+                             pdf_dot_metadata(key, employee_id, datetime.now(UTC)), facts)
     elif output.suffix.casefold() == ".pdf":
         content = render_pdf(template, slots, bits,
-                             pdf_dot_metadata(key, employee_id, datetime.now(UTC)))
+                             pdf_dot_metadata(key, employee_id, datetime.now(UTC)),
+                             canary=facts)
     elif output.suffix.casefold() == ".docx":
-        content = render_docx(template, slots, bits, key, employee_id)
+        content = render_docx(template, slots, bits, key, employee_id, facts)
     elif output.suffix.casefold() in {".txt", ".md"}:
-        content = render_text(template, slots, bits).encode("utf-8")
+        content = render_text(template, slots, bits, facts).encode("utf-8")
     else:
         raise ValueError("output file must use .txt, .md, .docx, .pdf, or .png")
     if output.exists():

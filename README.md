@@ -6,7 +6,9 @@ Each employee gets their own copy of a document with a hidden fingerprint: invis
 characters, look-alike letters, special spaces, synonym and spelling choices, Word
 metadata, and printer dots. When a copy leaks (edited, retyped, cut down, printed and
 photographed, or two copies merged), MoleHunt reads what is left of the fingerprint,
-ranks the copies with a likelihood ratio, and writes a forensic report.
+ranks the copies with a likelihood ratio, and writes a forensic report. Each copy also
+states a few facts differently (canaries), so even a paraphrase can be traced; the
+scrub check flags deliberate cleaning; forwarded copies reveal the whole forward path.
 
 Offline. Synthetic people and documents only. No AI or machine learning, just statistics.
 A match tells you **which copy** leaked, not **who** leaked it.
@@ -75,7 +77,7 @@ Evidence can be `.txt`, `.md`, `.docx`, or a `.png` / `.jpg` scan of a printed c
 
 ---
 
-## 4. Live demo with two laptops (same Wi-Fi)
+## 4. LAN party: Find the Mole, Escape Room, Forensic Lab (same Wi-Fi)
 
 On the presenting laptop:
 
@@ -83,16 +85,19 @@ On the presenting laptop:
 uv run molehunt live
 ```
 
-It prints a **PIN** and a **Join** link. On the second laptop or a phone:
+It prints a **PIN**, the **players' address**, and a **Host console** link (open
+that one only on this laptop; it unlocks the projector screens). Phones open the
+address and pick a door:
 
-1. Open the Join link, pick an employee, enter the PIN, download the copy.
-2. Edit it, retype it, or print it and take a photo.
-3. Upload it back on the same page.
+| Door | What happens |
+|---|---|
+| Find the Mole | everyone gets their own copy, a secret mole leaks it with scrub tools, players spend forensic tokens and bet, then the projector runs the real forensics: meter, heatmap, facts, family tree |
+| Escape Room | teams race 30 minutes through six locks: hash check, invisible ink, DOCX metadata, printer dots, printer log, fingerprint |
+| Forensic Lab | download a copy, leak it any way you like, see the full examination |
 
-Open the **Board** link on the projector. Each leak appears within 3 seconds with its
-hash, the ranking, and the finding. Full steps: [docs/LIVE_DEMO.md](docs/LIVE_DEMO.md).
-If the other laptop can't connect, set the Wi-Fi to **Private** and allow Python
-through the firewall.
+Halloween theme, works offline (fonts and icons are bundled). Full steps:
+[docs/LIVE_DEMO.md](docs/LIVE_DEMO.md). If phones can't connect, set the Wi-Fi to
+**Private** and allow Python through the firewall.
 
 ---
 
@@ -100,6 +105,8 @@ through the firewall.
 
 | Command | What it does |
 |---|---|
+| `uv run molehunt examine leak.txt --master m.md --employees r.csv --html out.html` | every check on one leak: fingerprint, canary facts, scrub check, family tree, plus a findings page |
+| `uv run molehunt forward --from E007 --to C12 --master M1 -o c12.txt` | forward a copy: the new copy carries both hops, so a later leak shows the path |
 | `uv run molehunt redteam --tools strip,collapse,truncate:0.8` | Red Team: try to scrub your copy and evade the detector |
 | `uv run molehunt issue E003 --master M1 -o x.txt --code tardos` then `analyze x.txt ... --collusion` | Catch two people who merged their copies |
 | `uv run molehunt analyze leak.txt ... --logs access.csv` | Combine the fingerprint with access/print logs |
@@ -116,10 +123,10 @@ Benchmark: 25,200 attacked leaks, all 9 plan targets passed, 2 wrong accusations
 ## 7. Where things are
 
 ```text
-molehunt/      the code (core, channels, detect, attacks, game, ui)
-data/masters/  7 synthetic documents (3 benchmark + 4 case stories)
+molehunt/      the code (core, channels, detect, attacks, game, web, ui)
+data/masters/  8 synthetic documents (3 benchmark, 4 case stories, 1 game master)
 docs/          explanations per module, decisions, benchmark, validation
-tests/         314 tests
+tests/         352 tests
 ```
 
-Viva notes: [docs/EXPLAIN_INDEX.md](docs/EXPLAIN_INDEX.md). Plan coverage: [docs/PLAN_AUDIT.md](docs/PLAN_AUDIT.md).
+Codebase map: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Viva notes: [docs/EXPLAIN_INDEX.md](docs/EXPLAIN_INDEX.md). Plan coverage: [docs/PLAN_AUDIT.md](docs/PLAN_AUDIT.md).

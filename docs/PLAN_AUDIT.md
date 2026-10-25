@@ -95,10 +95,23 @@ deliverable (report, slides, rehearsal); **Changed** = replaced by a logged deci
 | P9.4-P9.6 | report, PPT, rehearsal, viva | User | User | |
 | P9.7 | fresh-clone test | User | User | |
 
+## Revamp (after the plan): forensic extras and LAN games
+
+| Item | Status | Evidence |
+|---|---|---|
+| Fact-level canaries | Done | `core/canaries.py`, `tests/test_canaries.py` (headline paraphrase -> holder) |
+| Scrub detector | Done | `detect/scrub.py`, `tests/test_scrub.py` |
+| Leak family tree | Done | `core/lineage.py`, `molehunt forward`, `tests/test_lineage.py` |
+| Heatmap + attribution-o-meter | Done | `detect/heatmap.py`, `web/findings.py`, `tests/test_forensics.py` |
+| Find the Mole (LAN) | Done | `game/mole_game.py`, `web/game_*.py`, `tests/test_mole_game.py`, `tests/test_web_games.py` |
+| Escape-room cases (LAN) | Done | `game/escape_*.py`, `web/escape_app.py`, `tests/test_escape_room.py` (solved from files only) |
+| Halloween UI, offline assets | Done | `web/theme.py`, `web/static/` |
+| Real-room playtest with phones | User | |
+
 ## Rule checks
 
 - Rule 9: every module is under 300 lines (`cli.py` was 442; now split).
 - Rule 4: robustness numbers appear only in `docs/BENCHMARK.md`, copied from `bench/results`.
 - Rule 6: the detector never imports `game/`; validator reads only `ground_truth.json`.
-- Rule 7: one approved exception, the opt-in `molehunt live` LAN demo (logged in DECISIONS.md).
+- Rule 7: one approved exception, the opt-in `molehunt live` LAN server (lab + two games, logged in DECISIONS.md).
 - No ML anywhere: statistics, HMAC, template matching. OCR is template matching, not Tesseract (an LSTM network).

@@ -64,3 +64,13 @@
   forwarded outside the system keeps its parent's fingerprint only.
 - The heatmap re-runs alignment on the masked leak to get window positions for
   erased slots; it costs one extra alignment per leak.
+- Web assets (Creepster, Special Elite from Google Fonts; Lucide icons) are downloaded
+  once into `molehunt/web/static` with their licences and served by the LAN server, so
+  the games need no internet at run time.
+- The LAN server turns off `allow_reuse_address` on Windows: otherwise a second
+  `molehunt live` silently shares the port and players reach the wrong server.
+- Find the Mole and the escape room use a seeded RNG whose seed is printed at start, so
+  any round can be replayed; answers come only from generated evidence.
+- Pages update by polling a version number every 2 s and reloading: no WebSocket, no JS
+  framework, easy to explain.
+- The old `/` join page of `molehunt live` moved to `/lab`; `/` is now the hub.

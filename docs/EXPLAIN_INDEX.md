@@ -1,5 +1,7 @@
 # EXPLAIN index (module -> viva note)
 
+Start with `ARCHITECTURE.md` for the whole map; `LIVE_DEMO.md` explains how to run the LAN games.
+
 | Module | Note |
 |---|---|
 | core/keys, template, slots, codes, tardos | EXPLAIN_core, _keys, _template, _slots, _codes, _tardos |
@@ -27,7 +29,15 @@
 | ui/diff_actions, timeline_actions | EXPLAIN_ui_diff_actions, _ui_timeline |
 | ui/analysis_actions, casebook_actions | EXPLAIN_ui_analysis_actions, _ui_casebook_actions |
 | ui/redteam_panel | EXPLAIN_ui_redteam |
-| live, live_pages | EXPLAIN_live |
+| core/canaries | EXPLAIN_canaries |
+| core/lineage | EXPLAIN_lineage |
+| detect/scrub | EXPLAIN_scrub |
+| detect/heatmap | EXPLAIN_heatmap |
+| forensics (examine hub) | EXPLAIN_forensics |
+| game/mole_game | EXPLAIN_mole_game |
+| game/escape_case, escape_room | EXPLAIN_escape_room |
+| web/* (server, hub, theme, findings, lab, game, escape) | EXPLAIN_web |
+| live, cli_live | EXPLAIN_live |
 
 Cross-cutting: DECISIONS.md (every ambiguity resolved), VALIDATION.md (tool
 cross-checks), BENCHMARK.md (measured results), PLAN_AUDIT.md (plan coverage).

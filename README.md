@@ -2,131 +2,93 @@
 
 **Find which copy of a confidential document leaked.**
 
-Each employee gets their own copy of a document with a hidden fingerprint: invisible
-characters, look-alike letters, special spaces, synonym and spelling choices, Word
-metadata, and printer dots. When a copy leaks (edited, retyped, cut down, printed and
-photographed, or two copies merged), MoleHunt reads what is left of the fingerprint,
-ranks the copies with a likelihood ratio, and writes a forensic report. Each copy also
-states a few facts differently (canaries), so even a paraphrase can be traced; the
-scrub check flags deliberate cleaning; forwarded copies reveal the whole forward path.
+Everyone gets their own copy of a document with a hidden fingerprint. When a copy
+leaks, even edited, retyped, printed and photographed, or forwarded, MoleHunt reads
+what is left of the fingerprint and tells you which copy it came from, and how sure
+it is.
 
-Offline. Synthetic people and documents only. No AI or machine learning, just statistics.
-A match tells you **which copy** leaked, not **who** leaked it.
+Cyber Forensics project, SVKM's MPSTME. Eshan Shukla (B124) and Ayush Garg (B143).
+Offline, synthetic data only, no AI or machine learning: just keyed hashing and statistics.
 
 ---
 
-## 1. Install (once)
+## What it does
 
-Needs [uv](https://docs.astral.sh/uv/) (Python manager).
+| Feature | In one line |
+|---|---|
+| Fingerprinted copies | Invisible characters, look-alike letters, special spaces, word and spelling choices, Word metadata, printer dots |
+| Evidence handling | SHA-256 at intake, read-only original, tamper-evident custody log |
+| Statistical verdict | Likelihood ratio per copy; names a copy only when it is 100x ahead and under a 0.1% false-accusation bound |
+| Canary facts | Each copy has a different codename, budget, venue and date, so even a paraphrase can be traced |
+| Scrub detector | Flags deliberate cleaning of the hidden marks |
+| Leak family tree | A forwarded copy reveals the whole path, e.g. Company -> E007 -> C12 |
+| Meter and heatmap | Shows the evidence building up slot by slot |
+| Games | Find the Mole (party game), Escape Room (six forensic locks), Casebook, Red Team |
+
+A match identifies **which copy** leaked, not **who** leaked it.
+
+---
+
+## Install (once)
+
+Needs [uv](https://docs.astral.sh/uv/).
 
 ```bash
-uv python install 3.11
 uv sync --python 3.11
 uv run molehunt init
-```
-
-`init` creates `.molehunt/` with your secret key, the database, and the custody log.
-
-Check it works:
-
-```bash
 uv run pytest -q
 ```
 
----
-
-## 2. Open the app
-
-```bash
-uv run molehunt serve
-```
-
-| Tab | What you do there |
-|---|---|
-| Evidence analysis | Pick a leaked file, master, roster, key, click **Run analysis**. See the ranking, slot matrix, and finding. Write a report. |
-| Issue copy | Register a master document, then issue a fingerprinted copy for an employee. |
-| Intake and custody | Bring evidence in (hash + read-only original + working copy), verify the custody log. |
-| Red Team bench | Run the benchmark, or play the mole: scrub your copy and try to fool the detector. |
-| Casebook | Play the 7 training cases. Tick "Casebook mode" so tools unlock as you progress. |
-| Evidence tools | Hex view, invisible character reveal, diff vs master, timeline, Word metadata explorer, printer dot decoder, collusion scorer, notes. |
+`init` creates `.molehunt/` with the secret key, the database and the custody log.
 
 ---
 
-## 3. The basic flow from the command line
+## Run it
 
-```bash
-# give every employee a copy
-uv run molehunt register data/masters/m1_roadmap.md --master-id M1
-uv run molehunt issue --master M1 --employees data/demo/roster50.csv --format txt,docx,pdf,png
-
-# pretend someone leaked E007's copy after retyping it
-uv run molehunt attack --name A5 data/demo/issued/E007.txt -o reports/generated/leak.txt
-
-# take it in as evidence and analyse it
-uv run molehunt intake reports/generated/leak.txt C-001 --actor EX-01
-uv run molehunt analyze reports/generated/leak.txt --master data/masters/m1_roadmap.md --employees data/demo/roster50.csv
-
-# full examiner report (DOCX or PDF)
-uv run molehunt report --case C-001 -o reports/generated/C-001.docx --master data/masters/m1_roadmap.md --employees data/demo/roster50.csv
-
-# show that tampering with the custody log is caught
-uv run molehunt custody demo
-```
-
-Evidence can be `.txt`, `.md`, `.docx`, or a `.png` / `.jpg` scan of a printed copy.
-
----
-
-## 4. LAN party: Find the Mole, Escape Room, Forensic Lab (same Wi-Fi)
-
-On the presenting laptop:
+**LAN games and lab** (phones on the same Wi-Fi or hotspot):
 
 ```bash
 uv run molehunt live
 ```
 
-It prints a **PIN**, the **players' address**, and a **Host console** link (open
-that one only on this laptop; it unlocks the projector screens). Phones open the
-address and pick a door:
+It prints a PIN, the players' address and a Host console link. Open the Host console on
+the presenting laptop; players open the address and pick Find the Mole, Escape Room or
+Forensic Lab. Step-by-step guide: [docs/LIVE_DEMO.md](docs/LIVE_DEMO.md).
 
-| Door | What happens |
-|---|---|
-| Find the Mole | everyone gets their own copy, a secret mole leaks it with scrub tools, players spend forensic tokens and bet, then the projector runs the real forensics: meter, heatmap, facts, family tree |
-| Escape Room | teams race 30 minutes through six locks: hash check, invisible ink, DOCX metadata, printer dots, printer log, fingerprint |
-| Forensic Lab | download a copy, leak it any way you like, see the full examination |
+**Desktop app:**
 
-Halloween theme, works offline (fonts and icons are bundled). Full steps:
-[docs/LIVE_DEMO.md](docs/LIVE_DEMO.md). If phones can't connect, set the Wi-Fi to
-**Private** and allow Python through the firewall.
-
----
-
-## 5. Other things you can run
-
-| Command | What it does |
-|---|---|
-| `uv run molehunt examine leak.txt --master m.md --employees r.csv --html out.html` | every check on one leak: fingerprint, canary facts, scrub check, family tree, plus a findings page |
-| `uv run molehunt forward --from E007 --to C12 --master M1 -o c12.txt` | forward a copy: the new copy carries both hops, so a later leak shows the path |
-| `uv run molehunt redteam --tools strip,collapse,truncate:0.8` | Red Team: try to scrub your copy and evade the detector |
-| `uv run molehunt issue E003 --master M1 -o x.txt --code tardos` then `analyze x.txt ... --collusion` | Catch two people who merged their copies |
-| `uv run molehunt analyze leak.txt ... --logs access.csv` | Combine the fingerprint with access/print logs |
-| `uv run molehunt bench` | Full benchmark (about 20 min); results in `bench/` |
-| `uv run molehunt --help` | Every command |
-
----
-
-## 6. Results
-
-Benchmark: 25,200 attacked leaks, all 9 plan targets passed, 2 wrong accusations in
-25,200. The weak spots are listed honestly in [docs/BENCHMARK.md](docs/BENCHMARK.md).
-
-## 7. Where things are
-
-```text
-molehunt/      the code (core, channels, detect, attacks, game, web, ui)
-data/masters/  8 synthetic documents (3 benchmark, 4 case stories, 1 game master)
-docs/          explanations per module, decisions, benchmark, validation
-tests/         352 tests
+```bash
+uv run molehunt serve
 ```
 
-Codebase map: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Viva notes: [docs/EXPLAIN_INDEX.md](docs/EXPLAIN_INDEX.md). Plan coverage: [docs/PLAN_AUDIT.md](docs/PLAN_AUDIT.md).
+**Command line, one full case:**
+
+```bash
+uv run molehunt register data/masters/m1_roadmap.md --master-id M1
+uv run molehunt issue E007 --master M1 -o demo/E007.txt
+uv run molehunt attack --name A5 demo/E007.txt -o demo/leak.txt
+uv run molehunt intake demo/leak.txt C-001 --actor EX-01
+uv run molehunt examine demo/leak.txt --master data/masters/m1_roadmap.md --employees data/demo/roster50.csv --html demo/findings.html
+uv run molehunt report --case C-001 -o demo/C-001.docx --master data/masters/m1_roadmap.md --employees data/demo/roster50.csv
+```
+
+`uv run molehunt --help` lists every command.
+
+---
+
+## Results
+
+- 25,200 simulated leaks across 12 attack types: all 9 targets met, 2 wrong accusations (0.008%).
+- 352 automated tests.
+- Weak spots, honestly: [docs/BENCHMARK.md](docs/BENCHMARK.md).
+
+---
+
+## Where things are
+
+```text
+molehunt/   code: core, channels, detect, attacks, game, web, ui
+data/       synthetic master documents and roster
+docs/       how it works (ARCHITECTURE.md), one note per module, benchmark
+tests/      pytest suite
+```
